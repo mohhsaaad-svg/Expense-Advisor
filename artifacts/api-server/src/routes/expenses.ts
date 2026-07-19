@@ -1,0 +1,169 @@
+import { Router } from "express";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { db, expensesTable } from "@workspace/db";
+import {
+  ListExpensesQueryParams,
+  CreateExpenseBody,
+  GetExpenseParams,
+  UpdateExpenseBody,
+  UpdateExpenseParams,
+  DeleteExpenseParams,
+} from "@workspace/api-zod";
+
+const router = Router();
+
+// GET /expenses
+router.get("/expenses", async (req, res): Promise<void> => {
+  const query = ListExpensesQueryParams.safeParse(req.query);
+  if (!query.success) {
+    res.status(400).json({ error: query.error.message });
+    return;
+  }
+
+  const { startDate, endDate, category } = query.data;
+
+  const conditions = [];
+  if (startDate) conditions.push(gte(expensesTable.date, startDate));
+  if (endDate) conditions.push(lte(expensesTable.date, endDate));
+  if (category) conditions.push(eq(expensesTable.category, category));
+
+  const expenses = await db
+    .select()
+    .from(expensesTable)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(expensesTable.date);
+
+  res.json(
+    expenses.map((e) => ({
+      id: e.id,
+      amount: parseFloat(e.amount),
+      category: e.category,
+      description: e.description,
+      date: e.date,
+      createdAt: e.createdAt.toISOString(),
+    })),
+  );
+});
+
+// POST /expenses
+router.post("/expenses", async (req, res): Promise<void> => {
+  const body = CreateExpenseBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [created] = await db
+    .insert(expensesTable)
+    .values({
+      amount: body.data.amount.toString(),
+      category: body.data.category,
+      description: body.data.description,
+      date: body.data.date,
+    })
+    .returning();
+
+  res.status(201).json({
+    id: created.id,
+    amount: parseFloat(created.amount),
+    category: created.category,
+    description: created.description,
+    date: created.date,
+    createdAt: created.createdAt.toISOString(),
+  });
+});
+
+// GET /expenses/:id
+router.get("/expenses/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = GetExpenseParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [expense] = await db
+    .select()
+    .from(expensesTable)
+    .where(eq(expensesTable.id, params.data.id));
+
+  if (!expense) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+
+  res.json({
+    id: expense.id,
+    amount: parseFloat(expense.amount),
+    category: expense.category,
+    description: expense.description,
+    date: expense.date,
+    createdAt: expense.createdAt.toISOString(),
+  });
+});
+
+// PATCH /expenses/:id
+router.patch("/expenses/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = UpdateExpenseParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const body = UpdateExpenseBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const updates: Partial<typeof expensesTable.$inferInsert> = {};
+  if (body.data.amount !== undefined) updates.amount = body.data.amount.toString();
+  if (body.data.category !== undefined) updates.category = body.data.category;
+  if (body.data.description !== undefined) updates.description = body.data.description;
+  if (body.data.date !== undefined) updates.date = body.data.date;
+
+  const [updated] = await db
+    .update(expensesTable)
+    .set(updates)
+    .where(eq(expensesTable.id, params.data.id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+
+  res.json({
+    id: updated.id,
+    amount: parseFloat(updated.amount),
+    category: updated.category,
+    description: updated.description,
+    date: updated.date,
+    createdAt: updated.createdAt.toISOString(),
+  });
+});
+
+// DELETE /expenses/:id
+router.delete("/expenses/:id", async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = DeleteExpenseParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [deleted] = await db
+    .delete(expensesTable)
+    .where(eq(expensesTable.id, params.data.id))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Expense not found" });
+    return;
+  }
+
+  res.status(204).send();
+});
+
+export default router;

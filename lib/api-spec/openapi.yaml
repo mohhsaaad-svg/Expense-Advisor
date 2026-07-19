@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Daily Expense Tracker API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: expenses
+    description: Expense operations
+  - name: budget
+    description: Budget configuration
+  - name: insights
+    description: Spending insights and tips
 paths:
   /healthz:
     get:
@@ -24,6 +30,222 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List expenses
+      description: Returns a list of expenses, optionally filtered by date range
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD)
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Create expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get expense by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateExpense
+      tags: [expenses]
+      summary: Update expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Updated expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /expenses/summary/daily:
+    get:
+      operationId: getDailySummary
+      tags: [insights]
+      summary: Today's spending summary
+      description: Returns today's total spending, budget remaining, and breakdown by category
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD), defaults to today
+      responses:
+        "200":
+          description: Daily summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailySummary"
+
+  /expenses/summary/weekly:
+    get:
+      operationId: getWeeklySummary
+      tags: [insights]
+      summary: This week's spending summary
+      description: Returns spending totals grouped by day for the current week
+      responses:
+        "200":
+          description: Weekly summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklySummary"
+
+  /insights/tips:
+    get:
+      operationId: getSpendingTips
+      tags: [insights]
+      summary: Get personalized spending tips
+      description: Returns tips and alerts based on spending patterns
+      responses:
+        "200":
+          description: Spending tips and alerts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingInsights"
+
+  /budget:
+    get:
+      operationId: getBudget
+      tags: [budget]
+      summary: Get budget settings
+      responses:
+        "200":
+          description: Budget settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+    put:
+      operationId: updateBudget
+      tags: [budget]
+      summary: Update budget settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "200":
+          description: Updated budget
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +256,177 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Expense:
+      type: object
+      required: [id, amount, category, description, date, createdAt]
+      properties:
+        id:
+          type: integer
+        amount:
+          type: number
+          description: Amount in dollars
+        category:
+          type: string
+          description: Expense category (e.g. Food, Transport, Shopping)
+        description:
+          type: string
+        date:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    ExpenseInput:
+      type: object
+      required: [amount, category, description, date]
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        date:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+
+    ExpenseUpdate:
+      type: object
+      properties:
+        amount:
+          type: number
+          minimum: 0.01
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 1
+        date:
+          type: string
+
+    Budget:
+      type: object
+      required: [id, dailyLimit, monthlyLimit, updatedAt]
+      properties:
+        id:
+          type: integer
+        dailyLimit:
+          type: number
+          description: Daily spending limit in dollars
+        monthlyLimit:
+          type: number
+          description: Monthly spending limit in dollars
+        updatedAt:
+          type: string
+          description: ISO datetime string
+
+    BudgetInput:
+      type: object
+      required: [dailyLimit, monthlyLimit]
+      properties:
+        dailyLimit:
+          type: number
+          minimum: 1
+        monthlyLimit:
+          type: number
+          minimum: 1
+
+    CategoryBreakdown:
+      type: object
+      required: [category, total, count, percentage]
+      properties:
+        category:
+          type: string
+        total:
+          type: number
+        count:
+          type: integer
+        percentage:
+          type: number
+
+    DailySummary:
+      type: object
+      required: [date, totalSpent, dailyLimit, remaining, percentUsed, categories, expenseCount]
+      properties:
+        date:
+          type: string
+        totalSpent:
+          type: number
+        dailyLimit:
+          type: number
+        remaining:
+          type: number
+        percentUsed:
+          type: number
+        expenseCount:
+          type: integer
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryBreakdown"
+
+    DaySpending:
+      type: object
+      required: [date, total, count]
+      properties:
+        date:
+          type: string
+        total:
+          type: number
+        count:
+          type: integer
+
+    WeeklySummary:
+      type: object
+      required: [weekTotal, dailyAverage, days, topCategory]
+      properties:
+        weekTotal:
+          type: number
+        dailyAverage:
+          type: number
+        topCategory:
+          type: ["string", "null"]
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaySpending"
+
+    SpendingTip:
+      type: object
+      required: [id, type, title, message]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: "alert | tip | warning | positive"
+        title:
+          type: string
+        message:
+          type: string
+
+    SpendingInsights:
+      type: object
+      required: [tips, alerts]
+      properties:
+        tips:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendingTip"
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendingTip"
