@@ -1,11 +1,11 @@
 import { useGetDailySummary, getGetDailySummaryQueryKey, useGetSpendingTips, getGetSpendingTipsQueryKey, useGetWeeklySummary, getGetWeeklySummaryQueryKey } from "@workspace/api-client-react";
 import { formatCurrency } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SummarySkeleton } from "@/components/Skeletons";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Lightbulb, TrendingDown, Info, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { Flame, Lightbulb, TrendingDown, Info, ShieldAlert, ArrowUpRight } from "lucide-react";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { data: summary, isLoading: loadingSummary } = useGetDailySummary(
@@ -20,122 +20,139 @@ export default function Dashboard() {
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "alert":
-        return <AlertCircle className="h-5 w-5" />;
+        return <ShieldAlert className="h-5 w-5" />;
       case "warning":
         return <TrendingDown className="h-5 w-5" />;
       case "positive":
-        return <CheckCircle2 className="h-5 w-5" />;
+        return <Flame className="h-5 w-5" />;
       case "tip":
       default:
         return <Lightbulb className="h-5 w-5" />;
     }
   };
 
-  const getAlertVariant = (type: string) => {
+  const getAlertStyle = (type: string) => {
     switch (type) {
       case "alert":
-        return "destructive";
+        return "bg-destructive/10 text-destructive border-destructive/20";
       case "warning":
-        return "warning";
+        return "bg-warning/10 text-warning-foreground border-warning/20";
       case "positive":
-        return "positive";
+        return "bg-primary/10 text-primary border-primary/20";
       case "tip":
       default:
-        return "tip";
+        return "bg-secondary text-secondary-foreground border-border";
     }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Here is what is happening with your money today.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Overview</h1>
+          <p className="text-lg text-muted-foreground font-light">Your money's temperature today.</p>
         </div>
         <AddExpenseDialog />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {loadingSummary || !summary ? (
-          <SummarySkeleton />
-        ) : (
-          <Card className="bg-card border-card-border overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[100px] pointer-events-none" />
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-sans font-medium text-muted-foreground uppercase tracking-wider">Today's Spending</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-6">
-                <span className="text-5xl font-serif tracking-tighter text-foreground">{formatCurrency(summary.totalSpent)}</span>
-                <span className="text-muted-foreground ml-2">/ {formatCurrency(summary.dailyLimit)}</span>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm font-medium">
-                  <span className={summary.percentUsed >= 100 ? "text-destructive" : "text-foreground"}>
-                    {summary.percentUsed >= 100 ? "Budget exceeded" : `${formatCurrency(summary.remaining)} remaining`}
-                  </span>
-                  <span className="text-muted-foreground">{Math.round(summary.percentUsed)}%</span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-7 space-y-8">
+          {loadingSummary || !summary ? (
+            <SummarySkeleton />
+          ) : (
+            <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+              <CardHeader className="pb-2 pt-8 px-8">
+                <CardTitle className="text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">Today's Burn</CardTitle>
+              </CardHeader>
+              <CardContent className="px-8 pb-8">
+                <div className="mb-8 flex items-baseline gap-3">
+                  <span className="text-6xl font-serif tracking-tighter text-foreground font-bold">{formatCurrency(summary.totalSpent)}</span>
+                  <span className="text-xl text-muted-foreground font-light">/ {formatCurrency(summary.dailyLimit)}</span>
                 </div>
-                <Progress 
-                  value={Math.min(summary.percentUsed, 100)} 
-                  className={summary.percentUsed >= 100 ? "[&>div]:bg-destructive" : summary.percentUsed > 80 ? "[&>div]:bg-orange-500" : ""}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className={cn("transition-colors", summary.percentUsed >= 100 ? "text-destructive font-bold" : "text-foreground")}>
+                      {summary.percentUsed >= 100 ? "Limit exceeded" : `${formatCurrency(summary.remaining)} left to spend safely`}
+                    </span>
+                    <span className="text-muted-foreground bg-secondary px-2 py-1 rounded-md text-xs font-bold">{Math.round(summary.percentUsed)}%</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(summary.percentUsed, 100)} 
+                    className={cn("h-3 rounded-full bg-secondary", summary.percentUsed >= 100 ? "[&>div]:bg-destructive" : summary.percentUsed > 80 ? "[&>div]:bg-warning" : "[&>div]:bg-primary")}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        <div className="space-y-6 flex flex-col">
-          {!loadingInsights && insights && (insights.alerts.length > 0 || insights.tips.length > 0) && (
-            <div className="space-y-4 flex-1">
-              {insights.alerts.map((alert) => (
-                <Alert key={alert.id} variant={getAlertVariant(alert.type) as any}>
-                  {getAlertIcon(alert.type)}
-                  <AlertTitle>{alert.title}</AlertTitle>
-                  <AlertDescription>{alert.message}</AlertDescription>
-                </Alert>
-              ))}
-              {insights.tips.slice(0, 1).map((tip) => (
-                <Alert key={tip.id} variant={getAlertVariant(tip.type) as any}>
-                  {getAlertIcon(tip.type)}
-                  <AlertTitle>{tip.title}</AlertTitle>
-                  <AlertDescription>{tip.message}</AlertDescription>
-                </Alert>
-              ))}
+          {!loadingSummary && summary && summary.categories.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">Categories Today</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {summary.categories.map((cat) => (
+                  <div key={cat.category} className="group p-5 rounded-2xl bg-card border border-card-border/60 shadow-sm hover-elevate flex items-center justify-between transition-all hover:border-primary/30">
+                    <div>
+                      <div className="font-medium text-foreground text-lg mb-1">{cat.category}</div>
+                      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{cat.count} transaction{cat.count !== 1 ? 's' : ''}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-serif text-xl font-bold tracking-tight text-foreground">{formatCurrency(cat.total)}</div>
+                      <div className="text-xs text-muted-foreground mt-1 font-medium">{Math.round(cat.percentage)}%</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-          {!loadingInsights && (!insights || (insights.alerts.length === 0 && insights.tips.length === 0)) && (
-            <Alert variant="tip">
-              <Info className="h-5 w-5" />
-              <AlertTitle>All good!</AlertTitle>
-              <AlertDescription>Your spending looks healthy today. Keep it up!</AlertDescription>
-            </Alert>
-          )}
         </div>
-      </div>
 
-      {!loadingSummary && summary && summary.categories.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-xl font-serif tracking-tight text-foreground">Categories Today</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {summary.categories.map((cat) => (
-              <Card key={cat.category} className="shadow-sm border-card-border/60 hover-elevate">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-foreground">{cat.category}</div>
-                    <div className="text-sm text-muted-foreground">{cat.count} transaction{cat.count !== 1 ? 's' : ''}</div>
+        <div className="lg:col-span-5 space-y-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">Insights</h3>
+          </div>
+          
+          <div className="space-y-4">
+            {!loadingInsights && insights && (insights.alerts.length > 0 || insights.tips.length > 0) && (
+              <>
+                {insights.alerts.map((alert) => (
+                  <div key={alert.id} className={cn("p-5 rounded-2xl border flex gap-4 items-start shadow-sm", getAlertStyle(alert.type))}>
+                    <div className="mt-0.5 shrink-0 bg-background/50 p-2 rounded-xl backdrop-blur-sm">
+                      {getAlertIcon(alert.type)}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-base mb-1">{alert.title}</h4>
+                      <p className="text-sm opacity-90 leading-relaxed">{alert.message}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-serif text-lg tracking-tight">{formatCurrency(cat.total)}</div>
-                    <div className="text-xs text-muted-foreground">{Math.round(cat.percentage)}%</div>
+                ))}
+                {insights.tips.slice(0, 2).map((tip) => (
+                  <div key={tip.id} className={cn("p-5 rounded-2xl border flex gap-4 items-start shadow-sm", getAlertStyle(tip.type))}>
+                    <div className="mt-0.5 shrink-0 bg-background/50 p-2 rounded-xl backdrop-blur-sm">
+                      {getAlertIcon(tip.type)}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-base mb-1">{tip.title}</h4>
+                      <p className="text-sm opacity-90 leading-relaxed">{tip.message}</p>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                ))}
+              </>
+            )}
+            
+            {!loadingInsights && (!insights || (insights.alerts.length === 0 && insights.tips.length === 0)) && (
+              <div className="p-6 rounded-2xl bg-secondary/50 border border-border text-center flex flex-col items-center justify-center min-h-[200px]">
+                <div className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                  <Flame className="h-6 w-6 text-muted-foreground/50" />
+                </div>
+                <h4 className="font-serif font-semibold text-lg mb-2">Quiet on the front</h4>
+                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">Your spending is perfectly aligned with your goals today.</p>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Daily Expense Tracker"
+title = "Ember"
 version = "1.0.0"
 id = "artifacts/expense-tracker"
 router = "path"

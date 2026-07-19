@@ -1,27 +1,26 @@
 import { useState } from "react";
 import { useListExpenses, getListExpensesQueryKey, useDeleteExpense } from "@workspace/api-client-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExpensesSkeleton } from "@/components/Skeletons";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { EditExpenseDialog } from "@/components/EditExpenseDialog";
-import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil } from "lucide-react";
+import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "Food & Drink": <Coffee className="w-4 h-4" />,
-  "Transport": <Car className="w-4 h-4" />,
-  "Shopping": <ShoppingBag className="w-4 h-4" />,
-  "Health": <Heart className="w-4 h-4" />,
-  "Entertainment": <Film className="w-4 h-4" />,
-  "Housing": <Home className="w-4 h-4" />,
-  "Utilities": <Zap className="w-4 h-4" />,
-  "Other": <MoreHorizontal className="w-4 h-4" />,
+  "Food & Drink": <Coffee className="w-5 h-5" />,
+  "Transport": <Car className="w-5 h-5" />,
+  "Shopping": <ShoppingBag className="w-5 h-5" />,
+  "Health": <Heart className="w-5 h-5" />,
+  "Entertainment": <Film className="w-5 h-5" />,
+  "Housing": <Home className="w-5 h-5" />,
+  "Utilities": <Zap className="w-5 h-5" />,
+  "Other": <MoreHorizontal className="w-5 h-5" />,
 };
 
 const CATEGORIES = [
@@ -54,7 +53,7 @@ export default function Expenses() {
       deleteExpense.mutate({ id }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-          toast({ title: "Expense deleted" });
+          toast({ title: "Expense deleted", description: "The record has been removed." });
         }
       });
     }
@@ -65,98 +64,130 @@ export default function Expenses() {
     e.amount.toString().includes(search)
   );
 
+  const groupedExpenses = filteredExpenses?.reduce((acc, expense) => {
+    const date = expense.date;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(expense);
+    return acc;
+  }, {} as Record<string, typeof expenses>);
+
+  const sortedDates = Object.keys(groupedExpenses || {}).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Expenses</h1>
-          <p className="text-muted-foreground mt-1">Review and manage your transaction history.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Logbook</h1>
+          <p className="text-lg text-muted-foreground font-light">Every ember tracked and categorized.</p>
         </div>
         <AddExpenseDialog />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-2xl border border-card-border">
+      <div className="flex flex-col sm:flex-row gap-4 bg-card p-3 rounded-2xl border border-card-border/60 shadow-sm">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Search expenses..." 
-            className="pl-9 bg-background/50 border-transparent focus-visible:border-input"
+            placeholder="Search by description or amount..." 
+            className="pl-11 bg-background/50 border-transparent focus-visible:ring-primary/20 h-12 rounded-xl text-base"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[200px] bg-background/50 border-transparent focus-visible:border-input">
+          <SelectTrigger className="w-full sm:w-[220px] bg-background/50 border-transparent focus-visible:ring-primary/20 h-12 rounded-xl text-base font-medium">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="all" className="rounded-lg cursor-pointer">All Categories</SelectItem>
             {CATEGORIES.map(c => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+              <SelectItem key={c} value={c} className="rounded-lg cursor-pointer">{c}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-8">
         {isLoading ? (
           <ExpensesSkeleton />
         ) : filteredExpenses?.length === 0 ? (
-          <div className="text-center py-20 bg-card rounded-2xl border border-card-border border-dashed">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Receipt className="w-8 h-8 text-muted-foreground" />
+          <div className="text-center py-24 bg-card rounded-3xl border border-card-border/60 shadow-sm flex flex-col items-center">
+            <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6 shadow-inner">
+              <Receipt className="w-10 h-10 text-muted-foreground/50" />
             </div>
-            <h3 className="text-lg font-serif font-medium text-foreground">No expenses found</h3>
-            <p className="text-muted-foreground mt-1">
+            <h3 className="text-2xl font-serif font-semibold text-foreground mb-2">No records found</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
               {search || categoryFilter !== "all" 
-                ? "Try adjusting your filters to find what you're looking for." 
-                : "You haven't logged any expenses yet."}
+                ? "Try clearing your search or filters to see your expenses." 
+                : "Your logbook is empty. Time to add your first expense."}
             </p>
+            {(search || categoryFilter !== "all") && (
+              <Button 
+                variant="outline" 
+                className="mt-6 rounded-full"
+                onClick={() => { setSearch(""); setCategoryFilter("all"); }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredExpenses?.map((expense) => (
-              <Card key={expense.id} className="group overflow-hidden border-card-border/60 shadow-sm transition-all hover:shadow-md">
-                <CardContent className="p-4 sm:p-5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center shrink-0">
-                      {CATEGORY_ICONS[expense.category] || <Receipt className="w-5 h-5" />}
+          <div className="space-y-10">
+            {sortedDates.map((date) => {
+              const dayExpenses = groupedExpenses![date]!;
+              const dayTotal = dayExpenses.reduce((sum, e) => sum + e.amount, 0);
+              
+              return (
+                <div key={date} className="space-y-4">
+                  <div className="flex items-end justify-between px-2 pb-2 border-b border-border/50">
+                    <h3 className="text-lg font-serif font-bold text-foreground">
+                      {formatDate(date)}
+                    </h3>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Total: <span className="text-foreground">{formatCurrency(dayTotal)}</span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate" title={expense.description}>
-                        {expense.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary" className="font-normal text-[10px] px-1.5 py-0">
-                          {expense.category}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {formatDate(expense.date)}
-                        </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {dayExpenses.map((expense) => (
+                      <div key={expense.id} className="group relative bg-card p-5 rounded-2xl border border-card-border/60 shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-5 flex-1 min-w-0">
+                          <div className="w-14 h-14 rounded-2xl bg-secondary text-secondary-foreground flex items-center justify-center shrink-0 shadow-inner group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                            {CATEGORY_ICONS[expense.category] || <Receipt className="w-6 h-6" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-lg text-foreground truncate mb-1" title={expense.description}>
+                              {expense.description}
+                            </p>
+                            <div className="flex items-center gap-3">
+                              <Badge variant="secondary" className="font-medium bg-background border-border text-xs px-2.5 py-0.5 rounded-md">
+                                {expense.category}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full border-t sm:border-0 border-border/50 pt-3 sm:pt-0">
+                          <div className="font-serif text-2xl font-bold tracking-tight text-foreground">
+                            {formatCurrency(expense.amount)}
+                          </div>
+                          <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                            <EditExpenseDialog expenseId={expense.id} />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl h-10 w-10"
+                              onClick={() => handleDelete(expense.id)}
+                              disabled={deleteExpense.isPending}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-serif text-lg font-medium mr-2">
-                      {formatCurrency(expense.amount)}
-                    </span>
-                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <EditExpenseDialog expenseId={expense.id} />
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(expense.id)}
-                        disabled={deleteExpense.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

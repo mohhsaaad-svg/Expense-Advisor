@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PiggyBank, Save } from "lucide-react";
+import { Flame, Save, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency } from "@/lib/utils";
@@ -55,14 +55,14 @@ export default function Budget() {
           queryClient.setQueryData(getGetBudgetQueryKey(), updatedBudget);
           queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary/daily"] });
           toast({
-            title: "Budget updated",
-            description: "Your spending limits have been successfully saved.",
+            title: "Settings saved",
+            description: "Your Ember limits have been successfully updated.",
           });
         },
         onError: () => {
           toast({
             title: "Error",
-            description: "Could not update budget. Please try again.",
+            description: "Could not update limits. Please try again.",
             variant: "destructive"
           });
         }
@@ -71,51 +71,54 @@ export default function Budget() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Budget Settings</h1>
-        <p className="text-muted-foreground mt-1">Set your boundaries and we'll help you stick to them.</p>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
+        <div>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Boundaries</h1>
+          <p className="text-lg text-muted-foreground font-light">Set your limits to prevent fires.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8">
           {isLoading ? (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-24 mt-4" />
+            <Card className="rounded-3xl border-card-border/60">
+              <CardContent className="p-8 space-y-6">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-12 w-32 mt-6" />
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-card-border shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <PiggyBank className="w-5 h-5 text-primary" />
+            <Card className="border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="flex items-center gap-3 text-2xl font-serif">
+                  <ShieldCheck className="w-6 h-6 text-primary" />
                   Spending Limits
                 </CardTitle>
-                <CardDescription>
-                  Define how much you want to spend to stay on track.
+                <CardDescription className="text-base mt-2">
+                  Define how much oxygen your spending gets before we alert you.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-8 pt-4">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 relative z-10">
                     <FormField
                       control={form.control}
                       name="dailyLimit"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base">Daily Target</FormLabel>
-                          <FormDescription>
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-lg font-medium">Daily Target</FormLabel>
+                          <FormDescription className="text-sm">
                             Your ideal max spending per day.
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                              <Input type="number" className="pl-8 text-lg font-serif" {...field} />
+                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">$</span>
+                              <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -127,15 +130,15 @@ export default function Budget() {
                       control={form.control}
                       name="monthlyLimit"
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base">Monthly Ceiling</FormLabel>
-                          <FormDescription>
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-lg font-medium">Monthly Ceiling</FormLabel>
+                          <FormDescription className="text-sm">
                             The absolute max you want to spend in a month.
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                              <Input type="number" className="pl-8 text-lg font-serif" {...field} />
+                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">$</span>
+                              <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -143,13 +146,13 @@ export default function Budget() {
                       )}
                     />
 
-                    <div className="pt-4 flex justify-end">
+                    <div className="pt-6 flex justify-end">
                       <Button 
                         type="submit" 
                         disabled={updateBudget.isPending || !form.formState.isDirty}
-                        className="gap-2 px-8 shadow-sm hover-elevate"
+                        className="h-14 gap-2 px-8 rounded-full shadow-lg shadow-primary/20 hover-elevate text-lg transition-all"
                       >
-                        <Save className="w-4 h-4" />
+                        <Save className="w-5 h-5" />
                         {updateBudget.isPending ? "Saving..." : "Save Limits"}
                       </Button>
                     </div>
@@ -160,29 +163,32 @@ export default function Budget() {
           )}
         </div>
         
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="bg-secondary/50 border-secondary-border shadow-none">
-            <CardContent className="p-6 space-y-4">
-              <h3 className="font-serif font-medium text-lg text-secondary-foreground">Why set limits?</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="bg-secondary/50 border-secondary-border shadow-none rounded-3xl">
+            <CardContent className="p-8 space-y-5">
+              <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center shadow-sm">
+                <Flame className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-serif font-bold text-2xl text-foreground">Why limits work</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">
                 A daily limit helps you make micro-decisions. Instead of stressing over a massive monthly number, you only have to think about today.
               </p>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-base text-muted-foreground leading-relaxed">
                 We'll let you know when you're getting close to your daily boundary so you can adjust your plans before the day is over.
               </p>
             </CardContent>
           </Card>
           
           {budget && (
-            <Card className="bg-primary/5 border-primary/20 shadow-none">
-              <CardContent className="p-6">
-                <h3 className="font-sans font-semibold text-sm text-primary uppercase tracking-wider mb-2">Current Alignment</h3>
-                <div className="text-sm text-muted-foreground mb-4 leading-relaxed">
-                  Your daily target equals {formatCurrency(budget.dailyLimit * 30)} over a 30-day month.
+            <Card className="bg-primary/5 border-primary/10 shadow-none rounded-3xl">
+              <CardContent className="p-8">
+                <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-3">Alignment Check</h3>
+                <div className="text-base text-foreground mb-6 leading-relaxed font-medium">
+                  Your daily target equals <span className="font-bold">{formatCurrency(budget.dailyLimit * 30)}</span> over a typical 30-day month.
                 </div>
-                <div className="flex justify-between items-center text-sm font-medium">
-                  <span className="text-foreground">Monthly Ceiling</span>
-                  <span className="text-foreground font-serif text-lg">{formatCurrency(budget.monthlyLimit)}</span>
+                <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Ceiling</span>
+                  <span className="text-foreground font-serif text-2xl font-bold">{formatCurrency(budget.monthlyLimit)}</span>
                 </div>
               </CardContent>
             </Card>
