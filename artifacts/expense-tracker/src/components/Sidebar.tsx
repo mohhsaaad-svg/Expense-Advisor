@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Receipt, PiggyBank, LogOut, Flame } from "lucide-react";
+import { LayoutDashboard, Receipt, PiggyBank, LogOut, Flame, Repeat } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ export function Sidebar() {
   const links = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/expenses", label: "Expenses", icon: Receipt },
+    { href: "/recurring", label: "Rituals", icon: Repeat },
     { href: "/budget", label: "Budget", icon: PiggyBank },
   ];
 
@@ -85,6 +86,7 @@ export function MobileNav() {
   const links = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
     { href: "/expenses", label: "Expenses", icon: Receipt },
+    { href: "/recurring", label: "Rituals", icon: Repeat },
     { href: "/budget", label: "Budget", icon: PiggyBank },
   ];
 

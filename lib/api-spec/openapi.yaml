@@ -16,6 +16,10 @@ tags:
     description: Budget configuration
   - name: insights
     description: Spending insights and tips
+  - name: recurring
+    description: Recurring expense rules (auto-logged)
+  - name: preferences
+    description: Display and alert preferences
   - name: Auth
     description: Browser and mobile authentication endpoints.
 paths:
@@ -310,7 +314,14 @@ paths:
       operationId: getWeeklySummary
       tags: [insights]
       summary: This week's spending summary
-      description: Returns spending totals grouped by day for the current week
+      description: Returns spending totals grouped by day for the week containing the given date
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD); anchors the week, defaults to today
       responses:
         "200":
           description: Weekly summary
@@ -319,12 +330,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/WeeklySummary"
 
+  /insights/stats:
+    get:
+      operationId: getSpendingStats
+      tags: [insights]
+      summary: Spending statistics and counters
+      description: Month-to-date totals, projection, streaks and automated counters
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD), defaults to today
+      responses:
+        "200":
+          description: Spending statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingStats"
+
+  /recurring:
+    get:
+      operationId: listRecurringExpenses
+      tags: [recurring]
+      summary: List recurring expense rules
+      responses:
+        "200":
+          description: List of recurring expense rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecurringExpense"
+    post:
+      operationId: createRecurringExpense
+      tags: [recurring]
+      summary: Create recurring expense rule
+      description: Creates the rule and immediately auto-logs any occurrences due since its start date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringExpenseInput"
+      responses:
+        "201":
+          description: Created recurring expense rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpense"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /recurring/{id}:
+    patch:
+      operationId: updateRecurringExpense
+      tags: [recurring]
+      summary: Update recurring expense rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringExpenseUpdate"
+      responses:
+        "200":
+          description: Updated recurring expense rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpense"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteRecurringExpense
+      tags: [recurring]
+      summary: Delete recurring expense rule
+      description: Already-logged expenses are kept (their recurring link is cleared)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /preferences:
+    get:
+      operationId: getPreferences
+      tags: [preferences]
+      summary: Get preferences
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+    put:
+      operationId: updatePreferences
+      tags: [preferences]
+      summary: Update preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesInput"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Preferences"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /insights/tips:
     get:
       operationId: getSpendingTips
       tags: [insights]
       summary: Get personalized spending tips
       description: Returns tips and alerts based on spending patterns
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD) treated as "today", defaults to server date
       responses:
         "200":
           description: Spending tips and alerts
@@ -464,7 +629,7 @@ components:
 
     Expense:
       type: object
-      required: [id, amount, category, description, date, createdAt]
+      required: [id, amount, category, description, date, recurringId, createdAt]
       properties:
         id:
           type: integer
@@ -479,6 +644,9 @@ components:
         date:
           type: string
           description: ISO date string (YYYY-MM-DD)
+        recurringId:
+          type: [integer, 'null']
+          description: Set when this expense was auto-logged from a recurring rule
         createdAt:
           type: string
           description: ISO datetime string
@@ -628,3 +796,146 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SpendingTip"
+
+    RecurringExpense:
+      type: object
+      required: [id, description, amount, category, frequency, startDate, active, lastMaterializedDate, createdAt]
+      properties:
+        id:
+          type: integer
+        description:
+          type: string
+        amount:
+          type: number
+        category:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        startDate:
+          type: string
+          description: ISO date string (YYYY-MM-DD); anchors the repeat schedule
+        active:
+          type: boolean
+        lastMaterializedDate:
+          type: [string, 'null']
+          description: Occurrences up to this date have been auto-logged
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    RecurringExpenseInput:
+      type: object
+      required: [description, amount, category, frequency, startDate]
+      properties:
+        description:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          minimum: 0.01
+        category:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        startDate:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+        active:
+          type: boolean
+
+    RecurringExpenseUpdate:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+        amount:
+          type: number
+          minimum: 0.01
+        category:
+          type: string
+          minLength: 1
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        startDate:
+          type: string
+        active:
+          type: boolean
+
+    Preferences:
+      type: object
+      required: [id, currency, alertThreshold, updatedAt]
+      properties:
+        id:
+          type: integer
+        currency:
+          type: string
+          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+        alertThreshold:
+          type: integer
+          description: Percent of daily limit at which warnings fire
+        updatedAt:
+          type: string
+          description: ISO datetime string
+
+    PreferencesInput:
+      type: object
+      required: [currency, alertThreshold]
+      properties:
+        currency:
+          type: string
+          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+        alertThreshold:
+          type: integer
+          minimum: 50
+          maximum: 100
+
+    SpendingStats:
+      type: object
+      required:
+        [
+          date,
+          monthToDate,
+          projectedMonthEnd,
+          monthlyLimit,
+          monthPercentUsed,
+          avgPerDay,
+          daysElapsed,
+          daysInMonth,
+          underBudgetStreak,
+          totalExpenseCount,
+          activeRecurringCount,
+          recurringMonthlyTotal,
+        ]
+      properties:
+        date:
+          type: string
+        monthToDate:
+          type: number
+        projectedMonthEnd:
+          type: number
+          description: Straight-line projection of this month's spend
+        monthlyLimit:
+          type: number
+        monthPercentUsed:
+          type: number
+        avgPerDay:
+          type: number
+        daysElapsed:
+          type: integer
+        daysInMonth:
+          type: integer
+        underBudgetStreak:
+          type: integer
+          description: Consecutive days (ending today) at or under the daily limit
+        totalExpenseCount:
+          type: integer
+        activeRecurringCount:
+          type: integer
+        recurringMonthlyTotal:
+          type: number
+          description: Approximate monthly cost of all active recurring rules

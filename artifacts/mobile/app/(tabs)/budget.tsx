@@ -5,41 +5,75 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { EmptyState } from '@/components/ember/EmptyState';
-import { formatMoney } from '@/constants/categories';
+import { currencySymbol } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useAuth } from '@/lib/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   getGetBudgetQueryKey,
   getGetDailySummaryQueryKey,
+  getGetPreferencesQueryKey,
+  getGetSpendingStatsQueryKey,
   getGetSpendingTipsQueryKey,
+  getListExpensesQueryKey,
+  getListRecurringExpensesQueryKey,
   useGetBudget,
+  useGetPreferences,
+  useListRecurringExpenses,
   useUpdateBudget,
+  useUpdatePreferences,
+  useUpdateRecurringExpense,
 } from '@workspace/api-client-react';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+
+const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD'] as const;
+type CurrencyOption = (typeof CURRENCY_OPTIONS)[number];
+
+const FREQ_LABEL: Record<string, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+};
 
 export default function BudgetScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
+  const { format } = useCurrency();
 
   const budget = useGetBudget();
   const updateBudget = useUpdateBudget();
+  const rules = useListRecurringExpenses({
+    query: { queryKey: getListRecurringExpensesQueryKey() },
+  });
+  const updateRule = useUpdateRecurringExpense();
+  const prefs = useGetPreferences({
+    query: { queryKey: getGetPreferencesQueryKey() },
+  });
+  const updatePreferences = useUpdatePreferences();
 
   // Controlled-with-fallback: null means "not touched yet, show server value"
   const [dailyDraft, setDailyDraft] = useState<string | null>(null);
   const [monthlyDraft, setMonthlyDraft] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const [currencyDraft, setCurrencyDraft] = useState<CurrencyOption | null>(null);
+  const [thresholdDraft, setThresholdDraft] = useState<number | null>(null);
+  const [savedPrefs, setSavedPrefs] = useState(false);
 
   const dailyValue =
     dailyDraft ?? (budget.data ? String(budget.data.dailyLimit) : '');
@@ -58,6 +92,14 @@ export default function BudgetScreen() {
     (parsedDaily !== budget.data.dailyLimit ||
       parsedMonthly !== budget.data.monthlyLimit);
 
+  const currencyValue: CurrencyOption =
+    currencyDraft ?? ((prefs.data?.currency as CurrencyOption | undefined) ?? 'USD');
+  const thresholdValue = thresholdDraft ?? prefs.data?.alertThreshold ?? 80;
+  const prefsDirty =
+    prefs.data !== undefined &&
+    (currencyValue !== prefs.data.currency ||
+      thresholdValue !== prefs.data.alertThreshold);
+
   const handleSave = () => {
     if (!isValid) return;
     updateBudget.mutate(
@@ -72,6 +114,9 @@ export default function BudgetScreen() {
           queryClient.invalidateQueries({
             queryKey: getGetSpendingTipsQueryKey(),
           });
+          queryClient.invalidateQueries({
+            queryKey: getGetSpendingStatsQueryKey(),
+          });
           setDailyDraft(null);
           setMonthlyDraft(null);
           setSaved(true);
@@ -80,6 +125,64 @@ export default function BudgetScreen() {
       },
     );
   };
+
+  const handleSavePrefs = () => {
+    updatePreferences.mutate(
+      { data: { currency: currencyValue, alertThreshold: thresholdValue } },
+      {
+        onSuccess: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          queryClient.invalidateQueries({
+            queryKey: getGetPreferencesQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetSpendingTipsQueryKey(),
+          });
+          setCurrencyDraft(null);
+          setThresholdDraft(null);
+          setSavedPrefs(true);
+          setTimeout(() => setSavedPrefs(false), 2000);
+        },
+      },
+    );
+  };
+
+  const toggleRule = (id: number, active: boolean) => {
+    Haptics.selectionAsync();
+    updateRule.mutate(
+      { id, data: { active } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getListRecurringExpensesQueryKey(),
+          });
+          queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+          queryClient.invalidateQueries({
+            queryKey: getGetDailySummaryQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetSpendingStatsQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetSpendingTipsQueryKey(),
+          });
+        },
+      },
+    );
+  };
+
+  const committed = (rules.data ?? [])
+    .filter((r) => r.active)
+    .reduce(
+      (s, r) =>
+        s +
+        (r.frequency === 'daily'
+          ? r.amount * 30
+          : r.frequency === 'weekly'
+            ? r.amount * 4
+            : r.amount),
+      0,
+    );
 
   const topPad = Platform.OS === 'web' ? 67 + 12 : insets.top + 12;
 
@@ -141,7 +244,7 @@ export default function BudgetScreen() {
                 ]}
               >
                 <Text style={[styles.currency, { color: colors.mutedForeground }]}>
-                  $
+                  {currencySymbol(currencyValue)}
                 </Text>
                 <TextInput
                   value={dailyValue}
@@ -173,7 +276,7 @@ export default function BudgetScreen() {
                 ]}
               >
                 <Text style={[styles.currency, { color: colors.mutedForeground }]}>
-                  $
+                  {currencySymbol(currencyValue)}
                 </Text>
                 <TextInput
                   value={monthlyValue}
@@ -250,14 +353,275 @@ export default function BudgetScreen() {
                 color={colors.accentForeground}
               />
               <Text style={[styles.hintText, { color: colors.accentForeground }]}>
-                {formatMoney(budget.data.dailyLimit)} a day adds up to about{' '}
-                {formatMoney(budget.data.dailyLimit * 30)} a month — your
-                monthly cap is {formatMoney(budget.data.monthlyLimit)}.
+                {format(budget.data.dailyLimit)} a day adds up to about{' '}
+                {format(budget.data.dailyLimit * 30)} a month — your
+                monthly cap is {format(budget.data.monthlyLimit)}.
               </Text>
             </View>
           ) : null}
         </>
       )}
+
+      {/* Rituals — recurring expenses */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colorTokens.radius,
+          },
+        ]}
+      >
+        <View style={styles.cardHeaderRow}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+            Rituals
+          </Text>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/recurring-form');
+            }}
+            style={({ pressed }) => [
+              styles.newBtn,
+              {
+                backgroundColor: colors.accent,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+            testID="button-new-ritual"
+          >
+            <Ionicons name="add" size={15} color={colors.accentForeground} />
+            <Text style={[styles.newBtnText, { color: colors.accentForeground }]}>
+              New
+            </Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
+          {rules.data && rules.data.length > 0
+            ? `Auto-logged on schedule — about ${format(committed)} a month right now.`
+            : 'Repeating expenses Ember logs for you automatically.'}
+        </Text>
+
+        {rules.isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
+        ) : (rules.data ?? []).length === 0 ? (
+          <Text style={[styles.emptyRituals, { color: colors.mutedForeground }]}>
+            Nothing repeats yet. Add rent, subscriptions or your daily coffee —
+            set it once and forget it.
+          </Text>
+        ) : (
+          (rules.data ?? []).map((r, i) => (
+            <View
+              key={r.id}
+              style={[
+                styles.ritualRow,
+                i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
+              ]}
+              testID={`ritual-row-${r.id}`}
+            >
+              <Pressable
+                onPress={() => router.push(`/recurring-form?id=${r.id}`)}
+                style={({ pressed }) => [
+                  styles.ritualPressable,
+                  { opacity: pressed ? 0.6 : r.active ? 1 : 0.55 },
+                ]}
+                testID={`ritual-edit-${r.id}`}
+              >
+                <CategoryIcon category={r.category} size={34} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <Text
+                    style={[styles.ritualName, { color: colors.foreground }]}
+                    numberOfLines={1}
+                  >
+                    {r.description}
+                  </Text>
+                  <Text
+                    style={[styles.ritualMeta, { color: colors.mutedForeground }]}
+                  >
+                    {FREQ_LABEL[r.frequency] ?? r.frequency} · {format(r.amount)}
+                    {r.active ? '' : ' · paused'}
+                  </Text>
+                </View>
+              </Pressable>
+              <Switch
+                value={r.active}
+                onValueChange={(v) => toggleRule(r.id, v)}
+                disabled={updateRule.isPending}
+                trackColor={{ false: colors.secondary, true: colors.primary }}
+                thumbColor="#FFFFFF"
+                testID={`switch-ritual-${r.id}`}
+              />
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Preferences */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colorTokens.radius,
+          },
+        ]}
+      >
+        <Text style={[styles.cardTitle, { color: colors.foreground }]}>
+          Preferences
+        </Text>
+        <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
+          The currency Ember shows and how early it warns you.
+        </Text>
+
+        <Text style={[styles.label, { color: colors.mutedForeground }]}>
+          Currency
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.currencyChips}
+        >
+          {CURRENCY_OPTIONS.map((code) => {
+            const active = currencyValue === code;
+            return (
+              <Pressable
+                key={code}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setCurrencyDraft(code);
+                }}
+                style={[
+                  styles.currencyChip,
+                  {
+                    backgroundColor: active ? colors.primary : colors.secondary,
+                  },
+                ]}
+                testID={`currency-chip-${code}`}
+              >
+                <Text
+                  style={[
+                    styles.currencyChipSymbol,
+                    {
+                      color: active
+                        ? colors.primaryForeground
+                        : colors.foreground,
+                    },
+                  ]}
+                >
+                  {currencySymbol(code)}
+                </Text>
+                <Text
+                  style={[
+                    styles.currencyChipCode,
+                    {
+                      color: active
+                        ? colors.primaryForeground
+                        : colors.secondaryForeground,
+                    },
+                  ]}
+                >
+                  {code}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
+          Alert threshold
+        </Text>
+        <View style={styles.stepperRow}>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setThresholdDraft(Math.max(50, thresholdValue - 5));
+            }}
+            disabled={thresholdValue <= 50}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                backgroundColor: colors.secondary,
+                opacity: thresholdValue <= 50 ? 0.4 : pressed ? 0.7 : 1,
+              },
+            ]}
+            testID="button-threshold-minus"
+          >
+            <Ionicons name="remove" size={18} color={colors.foreground} />
+          </Pressable>
+          <View style={styles.stepValueWrap}>
+            <Text style={[styles.stepValue, { color: colors.foreground }]}>
+              {thresholdValue}%
+            </Text>
+            <Text style={[styles.stepHint, { color: colors.mutedForeground }]}>
+              of a limit
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync();
+              setThresholdDraft(Math.min(100, thresholdValue + 5));
+            }}
+            disabled={thresholdValue >= 100}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              {
+                backgroundColor: colors.secondary,
+                opacity: thresholdValue >= 100 ? 0.4 : pressed ? 0.7 : 1,
+              },
+            ]}
+            testID="button-threshold-plus"
+          >
+            <Ionicons name="add" size={18} color={colors.foreground} />
+          </Pressable>
+        </View>
+        <Text style={[styles.thresholdHint, { color: colors.mutedForeground }]}>
+          Ember raises a warning once you've burned this share of your daily or
+          monthly limit.
+        </Text>
+
+        <Pressable
+          onPress={handleSavePrefs}
+          disabled={!prefsDirty || updatePreferences.isPending}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            {
+              backgroundColor:
+                savedPrefs && !prefsDirty ? colors.success : colors.primary,
+              opacity:
+                !prefsDirty || updatePreferences.isPending
+                  ? savedPrefs
+                    ? 1
+                    : 0.45
+                  : pressed
+                    ? 0.85
+                    : 1,
+            },
+          ]}
+          testID="button-save-preferences"
+        >
+          {updatePreferences.isPending ? (
+            <ActivityIndicator color={colors.primaryForeground} />
+          ) : (
+            <>
+              <Ionicons
+                name={savedPrefs && !prefsDirty ? 'checkmark' : 'options'}
+                size={17}
+                color={colors.primaryForeground}
+              />
+              <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
+                {savedPrefs && !prefsDirty ? 'Saved' : 'Save preferences'}
+              </Text>
+            </>
+          )}
+        </Pressable>
+        {updatePreferences.isError ? (
+          <Text style={[styles.errorText, { color: colors.destructive }]}>
+            Couldn't save — please try again.
+          </Text>
+        ) : null}
+      </View>
 
       {/* Account */}
       <View
@@ -326,6 +690,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 6,
   },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   cardTitle: {
     fontSize: 17,
     fontFamily: 'Outfit_600SemiBold',
@@ -335,6 +704,44 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontFamily: 'Outfit_400Regular',
     marginBottom: 8,
+  },
+  newBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  newBtnText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  emptyRituals: {
+    fontSize: 13.5,
+    lineHeight: 19,
+    fontFamily: 'Outfit_400Regular',
+    paddingVertical: 8,
+  },
+  ritualRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  ritualPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  ritualName: {
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+  },
+  ritualMeta: {
+    fontSize: 12.5,
+    fontFamily: 'Outfit_400Regular',
   },
   field: {
     gap: 6,
@@ -366,6 +773,58 @@ const styles = StyleSheet.create({
   per: {
     fontSize: 13,
     fontFamily: 'Outfit_400Regular',
+  },
+  currencyChips: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  currencyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+  currencyChipSymbol: {
+    fontSize: 14,
+    fontFamily: 'Outfit_700Bold',
+  },
+  currencyChipCode: {
+    fontSize: 12.5,
+    fontFamily: 'Outfit_500Medium',
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  stepBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepValueWrap: {
+    alignItems: 'center',
+    gap: 1,
+  },
+  stepValue: {
+    fontSize: 24,
+    fontFamily: 'Outfit_700Bold',
+    letterSpacing: -0.4,
+  },
+  stepHint: {
+    fontSize: 11,
+    fontFamily: 'Outfit_400Regular',
+  },
+  thresholdHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: 'Outfit_400Regular',
+    marginTop: 8,
   },
   saveBtn: {
     flexDirection: 'row',

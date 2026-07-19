@@ -36,6 +36,8 @@ import {
   getListExpensesQueryKey,
   getGetDailySummaryQueryKey,
   getGetWeeklySummaryQueryKey,
+  getGetSpendingStatsQueryKey,
+  getGetSpendingTipsQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -102,6 +104,8 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDailySummaryQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetWeeklySummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
             title: "Record updated",
             description: "Your expense has been successfully updated.",

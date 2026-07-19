@@ -9,6 +9,7 @@ import { Layout } from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import Expenses from '@/pages/Expenses';
 import Budget from '@/pages/Budget';
+import Recurring from '@/pages/Recurring';
 import { Flame } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -35,6 +36,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/expenses" component={Expenses} />
+      <Route path="/recurring" component={Recurring} />
       <Route path="/budget" component={Budget} />
       <Route component={NotFound} />
     </Switch>

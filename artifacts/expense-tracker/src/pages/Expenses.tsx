@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { useListExpenses, getListExpensesQueryKey, useDeleteExpense } from "@workspace/api-client-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import {
+  useListExpenses,
+  getListExpensesQueryKey,
+  useDeleteExpense,
+  getGetDailySummaryQueryKey,
+  getGetWeeklySummaryQueryKey,
+  getGetSpendingStatsQueryKey,
+  getGetSpendingTipsQueryKey,
+} from "@workspace/api-client-react";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExpensesSkeleton } from "@/components/Skeletons";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { EditExpenseDialog } from "@/components/EditExpenseDialog";
-import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame } from "lucide-react";
+import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame, Repeat } from "lucide-react";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -47,12 +56,17 @@ export default function Expenses() {
   const deleteExpense = useDeleteExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format } = useCurrency();
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this expense?")) {
       deleteExpense.mutate({ id }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetDailySummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetWeeklySummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({ title: "Expense deleted", description: "The record has been removed." });
         }
       });
@@ -143,7 +157,7 @@ export default function Expenses() {
                       {formatDate(date)}
                     </h3>
                     <div className="text-sm font-medium text-muted-foreground">
-                      Total: <span className="text-foreground">{formatCurrency(dayTotal)}</span>
+                      Total: <span className="text-foreground">{format(dayTotal)}</span>
                     </div>
                   </div>
                   
@@ -162,12 +176,18 @@ export default function Expenses() {
                               <Badge variant="secondary" className="font-medium bg-background border-border text-xs px-2.5 py-0.5 rounded-md">
                                 {expense.category}
                               </Badge>
+                              {expense.recurringId != null && (
+                                <Badge variant="secondary" className="font-medium bg-primary/10 text-primary border-transparent text-xs px-2.5 py-0.5 rounded-md">
+                                  <Repeat className="w-3 h-3 mr-1" />
+                                  Auto
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full border-t sm:border-0 border-border/50 pt-3 sm:pt-0">
                           <div className="font-serif text-2xl font-bold tracking-tight text-foreground">
-                            {formatCurrency(expense.amount)}
+                            {format(expense.amount)}
                           </div>
                           <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             <EditExpenseDialog expenseId={expense.id} />

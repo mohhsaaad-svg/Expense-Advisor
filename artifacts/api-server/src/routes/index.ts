@@ -4,6 +4,8 @@ import authRouter from "./auth";
 import expensesRouter from "./expenses";
 import budgetRouter from "./budget";
 import insightsRouter from "./insights";
+import recurringRouter from "./recurring";
+import preferencesRouter from "./preferences";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -17,5 +19,7 @@ router.use(requireAuth);
 router.use(expensesRouter);
 router.use(budgetRouter);
 router.use(insightsRouter);
+router.use(recurringRouter);
+router.use(preferencesRouter);
 
 export default router;

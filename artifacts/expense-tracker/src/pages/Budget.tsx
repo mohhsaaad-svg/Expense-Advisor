@@ -1,5 +1,13 @@
-import { useRef, useEffect } from "react";
-import { useGetBudget, getGetBudgetQueryKey, useUpdateBudget } from "@workspace/api-client-react";
+import { useRef, useEffect, useState } from "react";
+import {
+  useGetBudget,
+  getGetBudgetQueryKey,
+  useUpdateBudget,
+  useGetPreferences,
+  getGetPreferencesQueryKey,
+  useUpdatePreferences,
+  getGetSpendingTipsQueryKey,
+} from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,10 +16,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame, Save, ShieldCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Flame, Save, ShieldCheck, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatCurrency } from "@/lib/utils";
+import { currencySymbol } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 
 const formSchema = z.object({
   dailyLimit: z.coerce.number().min(1, "Daily limit must be at least $1"),
@@ -26,6 +36,7 @@ export default function Budget() {
   const updateBudget = useUpdateBudget();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { format, currency } = useCurrency();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,7 +91,7 @@ export default function Budget() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 space-y-8">
           {isLoading ? (
             <Card className="rounded-3xl border-card-border/60">
               <CardContent className="p-8 space-y-6">
@@ -117,7 +128,7 @@ export default function Budget() {
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">$</span>
+                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
                               <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
@@ -137,7 +148,7 @@ export default function Budget() {
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">$</span>
+                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
                               <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
@@ -161,6 +172,8 @@ export default function Budget() {
               </CardContent>
             </Card>
           )}
+
+          <PreferencesCard />
         </div>
         
         <div className="lg:col-span-4 space-y-6">
@@ -184,11 +197,11 @@ export default function Budget() {
               <CardContent className="p-8">
                 <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-3">Alignment Check</h3>
                 <div className="text-base text-foreground mb-6 leading-relaxed font-medium">
-                  Your daily target equals <span className="font-bold">{formatCurrency(budget.dailyLimit * 30)}</span> over a typical 30-day month.
+                  Your daily target equals <span className="font-bold">{format(budget.dailyLimit * 30)}</span> over a typical 30-day month.
                 </div>
                 <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
                   <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Ceiling</span>
-                  <span className="text-foreground font-serif text-2xl font-bold">{formatCurrency(budget.monthlyLimit)}</span>
+                  <span className="text-foreground font-serif text-2xl font-bold">{format(budget.monthlyLimit)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -196,5 +209,141 @@ export default function Budget() {
         </div>
       </div>
     </div>
+  );
+}
+
+const CURRENCIES = [
+  { code: "USD", label: "US Dollar ($)" },
+  { code: "EUR", label: "Euro (€)" },
+  { code: "GBP", label: "British Pound (£)" },
+  { code: "JPY", label: "Japanese Yen (¥)" },
+  { code: "INR", label: "Indian Rupee (₹)" },
+  { code: "CAD", label: "Canadian Dollar (CA$)" },
+  { code: "AUD", label: "Australian Dollar (A$)" },
+] as const;
+
+type CurrencyCode = (typeof CURRENCIES)[number]["code"];
+
+function PreferencesCard() {
+  const { data: prefs, isLoading } = useGetPreferences({
+    query: { queryKey: getGetPreferencesQueryKey() },
+  });
+  const updatePreferences = useUpdatePreferences();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [draftCurrency, setDraftCurrency] = useState<CurrencyCode | null>(null);
+  const [draftThreshold, setDraftThreshold] = useState<string | null>(null);
+
+  const currency = draftCurrency ?? (prefs?.currency as CurrencyCode | undefined) ?? "USD";
+  const threshold = draftThreshold ?? String(prefs?.alertThreshold ?? 80);
+  const dirty = !!prefs && (currency !== prefs.currency || threshold !== String(prefs.alertThreshold));
+
+  const save = () => {
+    const t = parseInt(threshold, 10);
+    if (Number.isNaN(t) || t < 50 || t > 100) {
+      toast({
+        title: "Invalid threshold",
+        description: "Pick a percentage between 50 and 100.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updatePreferences.mutate(
+      { data: { currency, alertThreshold: t } },
+      {
+        onSuccess: (updated) => {
+          queryClient.setQueryData(getGetPreferencesQueryKey(), updated);
+          queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
+          setDraftCurrency(null);
+          setDraftThreshold(null);
+          toast({
+            title: "Preferences saved",
+            description: "Ember now speaks your currency and warns at your pace.",
+          });
+        },
+        onError: () => {
+          toast({
+            title: "Error",
+            description: "Could not save preferences. Please try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  return (
+    <Card className="border-card-border/60 shadow-sm rounded-3xl">
+      <CardHeader className="p-8 pb-4">
+        <CardTitle className="flex items-center gap-3 text-2xl font-serif">
+          <Settings2 className="w-6 h-6 text-primary" />
+          Preferences
+        </CardTitle>
+        <CardDescription className="text-base mt-2">
+          The currency Ember displays and how early it warns you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-8 pt-4">
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div className="text-lg font-medium">Currency</div>
+                <p className="text-sm text-muted-foreground">How amounts are displayed everywhere.</p>
+                <Select value={currency} onValueChange={(v) => setDraftCurrency(v as CurrencyCode)}>
+                  <SelectTrigger
+                    className="h-14 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-medium"
+                    data-testid="select-currency"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code} className="rounded-lg cursor-pointer">
+                        {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <div className="text-lg font-medium">Alert threshold</div>
+                <p className="text-sm text-muted-foreground">Warn me once I've burned this much of a limit.</p>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={50}
+                    max={100}
+                    value={threshold}
+                    onChange={(e) => setDraftThreshold(e.target.value)}
+                    className="h-14 pr-10 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-serif"
+                    data-testid="input-threshold"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">%</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                onClick={save}
+                disabled={!dirty || updatePreferences.isPending}
+                variant="outline"
+                className="h-12 gap-2 px-6 rounded-full hover-elevate transition-all"
+                data-testid="button-save-preferences"
+              >
+                <Save className="w-4 h-4" />
+                {updatePreferences.isPending ? "Saving..." : "Save Preferences"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

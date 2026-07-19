@@ -30,8 +30,23 @@ export function categoryMeta(name: string): CategoryMeta {
   );
 }
 
-export function formatMoney(n: number): string {
-  return `$${n.toFixed(2)}`;
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  CAD: 'CA$',
+  AUD: 'A$',
+};
+
+export function currencySymbol(currency: string = 'USD'): string {
+  return CURRENCY_SYMBOLS[currency] ?? '$';
+}
+
+export function formatMoney(n: number, currency: string = 'USD'): string {
+  const decimals = currency === 'JPY' ? 0 : 2;
+  return `${currencySymbol(currency)}${n.toFixed(decimals)}`;
 }
 
 export function toDateKey(d: Date): string {

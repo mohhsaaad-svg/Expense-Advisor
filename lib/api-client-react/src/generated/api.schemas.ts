@@ -64,6 +64,11 @@ export interface Expense {
   description: string;
   /** ISO date string (YYYY-MM-DD) */
   date: string;
+  /**
+     * Set when this expense was auto-logged from a recurring rule
+     * @nullable
+     */
+  recurringId: number | null;
   /** ISO datetime string */
   createdAt: string;
 }
@@ -150,6 +155,138 @@ export interface SpendingInsights {
   alerts: SpendingTip[];
 }
 
+export type RecurringExpenseFrequency = typeof RecurringExpenseFrequency[keyof typeof RecurringExpenseFrequency];
+
+
+export const RecurringExpenseFrequency = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export interface RecurringExpense {
+  id: number;
+  description: string;
+  amount: number;
+  category: string;
+  frequency: RecurringExpenseFrequency;
+  /** ISO date string (YYYY-MM-DD); anchors the repeat schedule */
+  startDate: string;
+  active: boolean;
+  /**
+     * Occurrences up to this date have been auto-logged
+     * @nullable
+     */
+  lastMaterializedDate: string | null;
+  /** ISO datetime string */
+  createdAt: string;
+}
+
+export type RecurringExpenseInputFrequency = typeof RecurringExpenseInputFrequency[keyof typeof RecurringExpenseInputFrequency];
+
+
+export const RecurringExpenseInputFrequency = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export interface RecurringExpenseInput {
+  /** @minLength 1 */
+  description: string;
+  /** @minimum 0.01 */
+  amount: number;
+  /** @minLength 1 */
+  category: string;
+  frequency: RecurringExpenseInputFrequency;
+  /** ISO date string (YYYY-MM-DD) */
+  startDate: string;
+  active?: boolean;
+}
+
+export type RecurringExpenseUpdateFrequency = typeof RecurringExpenseUpdateFrequency[keyof typeof RecurringExpenseUpdateFrequency];
+
+
+export const RecurringExpenseUpdateFrequency = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export interface RecurringExpenseUpdate {
+  /** @minLength 1 */
+  description?: string;
+  /** @minimum 0.01 */
+  amount?: number;
+  /** @minLength 1 */
+  category?: string;
+  frequency?: RecurringExpenseUpdateFrequency;
+  startDate?: string;
+  active?: boolean;
+}
+
+export type PreferencesCurrency = typeof PreferencesCurrency[keyof typeof PreferencesCurrency];
+
+
+export const PreferencesCurrency = {
+  USD: 'USD',
+  EUR: 'EUR',
+  GBP: 'GBP',
+  JPY: 'JPY',
+  INR: 'INR',
+  CAD: 'CAD',
+  AUD: 'AUD',
+} as const;
+
+export interface Preferences {
+  id: number;
+  currency: PreferencesCurrency;
+  /** Percent of daily limit at which warnings fire */
+  alertThreshold: number;
+  /** ISO datetime string */
+  updatedAt: string;
+}
+
+export type PreferencesInputCurrency = typeof PreferencesInputCurrency[keyof typeof PreferencesInputCurrency];
+
+
+export const PreferencesInputCurrency = {
+  USD: 'USD',
+  EUR: 'EUR',
+  GBP: 'GBP',
+  JPY: 'JPY',
+  INR: 'INR',
+  CAD: 'CAD',
+  AUD: 'AUD',
+} as const;
+
+export interface PreferencesInput {
+  currency: PreferencesInputCurrency;
+  /**
+     * @minimum 50
+     * @maximum 100
+     */
+  alertThreshold: number;
+}
+
+export interface SpendingStats {
+  date: string;
+  monthToDate: number;
+  /** Straight-line projection of this month's spend */
+  projectedMonthEnd: number;
+  monthlyLimit: number;
+  monthPercentUsed: number;
+  avgPerDay: number;
+  daysElapsed: number;
+  daysInMonth: number;
+  /** Consecutive days (ending today) at or under the daily limit */
+  underBudgetStreak: number;
+  totalExpenseCount: number;
+  activeRecurringCount: number;
+  /** Approximate monthly cost of all active recurring rules */
+  recurringMonthlyTotal: number;
+}
+
 /**
  * Opaque session token — `Bearer <sid>`.
  */
@@ -187,6 +324,27 @@ category?: string;
 export type GetDailySummaryParams = {
 /**
  * ISO date string (YYYY-MM-DD), defaults to today
+ */
+date?: string;
+};
+
+export type GetWeeklySummaryParams = {
+/**
+ * ISO date string (YYYY-MM-DD); anchors the week, defaults to today
+ */
+date?: string;
+};
+
+export type GetSpendingStatsParams = {
+/**
+ * ISO date string (YYYY-MM-DD), defaults to today
+ */
+date?: string;
+};
+
+export type GetSpendingTipsParams = {
+/**
+ * ISO date string (YYYY-MM-DD) treated as "today", defaults to server date
  */
 date?: string;
 };

@@ -9,8 +9,23 @@ import {
   UpdateExpenseParams,
   DeleteExpenseParams,
 } from "@workspace/api-zod";
+import { materializeDueRecurring, toDateString } from "../lib/recurrence";
 
 const router = Router();
+
+type ExpenseRow = typeof expensesTable.$inferSelect;
+
+function serialize(e: ExpenseRow) {
+  return {
+    id: e.id,
+    amount: parseFloat(e.amount),
+    category: e.category,
+    description: e.description,
+    date: e.date,
+    recurringId: e.recurringId,
+    createdAt: e.createdAt.toISOString(),
+  };
+}
 
 // GET /expenses
 router.get("/expenses", async (req, res): Promise<void> => {
@@ -18,6 +33,13 @@ router.get("/expenses", async (req, res): Promise<void> => {
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
     return;
+  }
+
+  // Auto-log any recurring expenses that have come due before listing.
+  try {
+    await materializeDueRecurring(toDateString(new Date()));
+  } catch (err) {
+    req.log.error({ err }, "recurring materialization failed");
   }
 
   const { startDate, endDate, category } = query.data;
@@ -33,16 +55,7 @@ router.get("/expenses", async (req, res): Promise<void> => {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(expensesTable.date);
 
-  res.json(
-    expenses.map((e) => ({
-      id: e.id,
-      amount: parseFloat(e.amount),
-      category: e.category,
-      description: e.description,
-      date: e.date,
-      createdAt: e.createdAt.toISOString(),
-    })),
-  );
+  res.json(expenses.map(serialize));
 });
 
 // POST /expenses
@@ -63,14 +76,7 @@ router.post("/expenses", async (req, res): Promise<void> => {
     })
     .returning();
 
-  res.status(201).json({
-    id: created.id,
-    amount: parseFloat(created.amount),
-    category: created.category,
-    description: created.description,
-    date: created.date,
-    createdAt: created.createdAt.toISOString(),
-  });
+  res.status(201).json(serialize(created));
 });
 
 // GET /expenses/:id
@@ -92,14 +98,7 @@ router.get("/expenses/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: expense.id,
-    amount: parseFloat(expense.amount),
-    category: expense.category,
-    description: expense.description,
-    date: expense.date,
-    createdAt: expense.createdAt.toISOString(),
-  });
+  res.json(serialize(expense));
 });
 
 // PATCH /expenses/:id
@@ -134,14 +133,7 @@ router.patch("/expenses/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: updated.id,
-    amount: parseFloat(updated.amount),
-    category: updated.category,
-    description: updated.description,
-    date: updated.date,
-    createdAt: updated.createdAt.toISOString(),
-  });
+  res.json(serialize(updated));
 });
 
 // DELETE /expenses/:id

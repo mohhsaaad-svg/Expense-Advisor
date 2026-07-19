@@ -39,6 +39,10 @@ function RootLayoutNav() {
         name="expense-form"
         options={{ headerShown: false, presentation: 'modal' }}
       />
+      <Stack.Screen
+        name="recurring-form"
+        options={{ headerShown: false, presentation: 'modal' }}
+      />
     </Stack>
   );
 }

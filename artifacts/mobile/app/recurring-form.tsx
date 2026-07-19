@@ -11,12 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  CATEGORIES,
-  currencySymbol,
-  dateLabel,
-  toDateKey,
-} from '@/constants/categories';
+import { CATEGORIES, currencySymbol, dateLabel, toDateKey } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -28,14 +23,22 @@ import {
   getGetSpendingTipsQueryKey,
   getGetWeeklySummaryQueryKey,
   getListExpensesQueryKey,
-  getGetExpenseQueryKey,
-  useCreateExpense,
-  useDeleteExpense,
-  useGetExpense,
-  useUpdateExpense,
+  getListRecurringExpensesQueryKey,
+  useCreateRecurringExpense,
+  useDeleteRecurringExpense,
+  useListRecurringExpenses,
+  useUpdateRecurringExpense,
 } from '@workspace/api-client-react';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
+
+const FREQUENCIES = [
+  { value: 'daily', label: 'Daily', hint: 'every day' },
+  { value: 'weekly', label: 'Weekly', hint: 'same weekday' },
+  { value: 'monthly', label: 'Monthly', hint: 'same day each month' },
+] as const;
+
+type FrequencyValue = (typeof FREQUENCIES)[number]['value'];
 
 function lastDays(n: number): string[] {
   const out: string[] = [];
@@ -47,48 +50,57 @@ function lastDays(n: number): string[] {
   return out;
 }
 
-export default function ExpenseFormScreen() {
+export default function RecurringFormScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { currency } = useCurrency();
   const params = useLocalSearchParams<{ id?: string }>();
-  const expenseId = params.id ? parseInt(params.id, 10) : undefined;
-  const isEdit = expenseId !== undefined && !Number.isNaN(expenseId);
+  const ruleId = params.id ? parseInt(params.id, 10) : undefined;
+  const isEdit = ruleId !== undefined && !Number.isNaN(ruleId);
 
-  const existing = useGetExpense(expenseId ?? 0, {
+  // There is no GET /recurring/{id}; the (small, cached) list serves edit mode.
+  const rules = useListRecurringExpenses({
     query: {
-      queryKey: getGetExpenseQueryKey(expenseId ?? 0),
+      queryKey: getListRecurringExpensesQueryKey(),
       enabled: isEdit,
     },
   });
+  const existing = isEdit ? rules.data?.find((r) => r.id === ruleId) : undefined;
 
-  const createExpense = useCreateExpense();
-  const updateExpense = useUpdateExpense();
-  const deleteExpense = useDeleteExpense();
+  const createRule = useCreateRecurringExpense();
+  const updateRule = useUpdateRecurringExpense();
+  const deleteRule = useDeleteRecurringExpense();
   const pending =
-    createExpense.isPending || updateExpense.isPending || deleteExpense.isPending;
+    createRule.isPending || updateRule.isPending || deleteRule.isPending;
 
-  // Drafts fall back to the fetched expense in edit mode
+  // Drafts fall back to the fetched rule in edit mode
   const [amountDraft, setAmountDraft] = useState<string | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<string | null>(null);
   const [descDraft, setDescDraft] = useState<string | null>(null);
-  const [dateDraft, setDateDraft] = useState<string | null>(null);
+  const [frequencyDraft, setFrequencyDraft] = useState<FrequencyValue | null>(null);
+  const [startDraft, setStartDraft] = useState<string | null>(null);
 
-  const amount =
-    amountDraft ?? (existing.data ? String(existing.data.amount) : '');
-  const category = categoryDraft ?? existing.data?.category ?? null;
-  const description = descDraft ?? existing.data?.description ?? '';
-  const date = dateDraft ?? existing.data?.date ?? toDateKey(new Date());
+  const amount = amountDraft ?? (existing ? String(existing.amount) : '');
+  const category = categoryDraft ?? existing?.category ?? null;
+  const description = descDraft ?? existing?.description ?? '';
+  const frequency: FrequencyValue =
+    frequencyDraft ??
+    ((existing &&
+    (['daily', 'weekly', 'monthly'] as const).includes(
+      existing.frequency as FrequencyValue,
+    )
+      ? (existing.frequency as FrequencyValue)
+      : 'monthly') as FrequencyValue);
+  const startDate = startDraft ?? existing?.startDate ?? toDateKey(new Date());
 
   const dates = useMemo(() => {
     const days = lastDays(14);
-    // In edit mode the expense date might be older than 14 days — keep it selectable
-    if (isEdit && existing.data && !days.includes(existing.data.date)) {
-      days.push(existing.data.date);
+    if (isEdit && existing && !days.includes(existing.startDate)) {
+      days.push(existing.startDate);
     }
     return days;
-  }, [isEdit, existing.data]);
+  }, [isEdit, existing]);
 
   const parsedAmount = parseFloat(amount.replace(',', '.'));
   const isValid =
@@ -98,6 +110,7 @@ export default function ExpenseFormScreen() {
     description.trim().length > 0;
 
   const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: getListRecurringExpensesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDailySummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetWeeklySummaryQueryKey() });
@@ -111,73 +124,79 @@ export default function ExpenseFormScreen() {
       amount: parsedAmount,
       category,
       description: description.trim(),
-      date,
+      frequency,
+      startDate,
     };
     const onSuccess = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       invalidateAll();
       router.back();
     };
-    if (isEdit && expenseId !== undefined) {
-      updateExpense.mutate({ id: expenseId, data: payload }, { onSuccess });
+    if (isEdit && ruleId !== undefined) {
+      updateRule.mutate({ id: ruleId, data: payload }, { onSuccess });
     } else {
-      createExpense.mutate({ data: payload }, { onSuccess });
+      createRule.mutate({ data: payload }, { onSuccess });
     }
   };
 
   const handleDelete = () => {
-    if (!isEdit || expenseId === undefined) return;
-    Alert.alert('Delete expense', 'This ember goes out for good. Delete it?', [
-      { text: 'Keep it', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deleteExpense.mutate(
-            { id: expenseId },
-            {
-              onSuccess: () => {
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Warning,
-                );
-                invalidateAll();
-                router.back();
+    if (!isEdit || ruleId === undefined) return;
+    Alert.alert(
+      'Delete ritual',
+      'Ember stops logging it. Entries already in your logbook stay.',
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteRule.mutate(
+              { id: ruleId },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(
+                    Haptics.NotificationFeedbackType.Warning,
+                  );
+                  invalidateAll();
+                  router.back();
+                },
               },
-            },
-          );
+            );
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
-  const saveError = createExpense.isError || updateExpense.isError;
+  const saveError = createRule.isError || updateRule.isError;
   const topPad = Platform.OS === 'web' ? 24 : Math.max(insets.top, 16);
   const bottomPad =
     Platform.OS === 'web' ? 34 + 16 : Math.max(insets.bottom, 16);
+  const backfilling = !isEdit && startDate < toDateKey(new Date());
 
   return (
     <View
       style={[styles.container, { backgroundColor: colors.background }]}
-      testID="screen-expense-form"
+      testID="screen-recurring-form"
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad }]}>
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 6 })}
-          testID="button-close-form"
+          testID="button-close-recurring-form"
         >
           <Ionicons name="close" size={26} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {isEdit ? 'Edit expense' : 'New expense'}
+          {isEdit ? 'Edit ritual' : 'New ritual'}
         </Text>
         {isEdit ? (
           <Pressable
             onPress={handleDelete}
             disabled={pending}
             style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 6 })}
-            testID="button-delete-expense"
+            testID="button-delete-recurring"
           >
             <Ionicons name="trash-outline" size={22} color={colors.destructive} />
           </Pressable>
@@ -186,7 +205,7 @@ export default function ExpenseFormScreen() {
         )}
       </View>
 
-      {isEdit && existing.isLoading ? (
+      {isEdit && rules.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
       ) : (
         <ScrollView
@@ -206,8 +225,76 @@ export default function ExpenseFormScreen() {
               placeholderTextColor={colors.mutedForeground}
               autoFocus={!isEdit}
               style={[styles.amountInput, { color: colors.foreground }]}
-              testID="input-amount"
+              testID="input-recurring-amount"
             />
+          </View>
+
+          {/* Name */}
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>
+            Name
+          </Text>
+          <TextInput
+            value={description}
+            onChangeText={setDescDraft}
+            placeholder="Netflix, rent, gym…"
+            placeholderTextColor={colors.mutedForeground}
+            style={[
+              styles.descInput,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: colorTokens.radius - 2,
+              },
+            ]}
+            testID="input-recurring-description"
+          />
+
+          {/* Frequency */}
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>
+            Repeats
+          </Text>
+          <View style={styles.freqRow}>
+            {FREQUENCIES.map((f) => {
+              const active = frequency === f.value;
+              return (
+                <Pressable
+                  key={f.value}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setFrequencyDraft(f.value);
+                  }}
+                  style={[
+                    styles.freqChip,
+                    {
+                      backgroundColor: active ? colors.accent : colors.card,
+                      borderColor: active ? colors.primary : colors.border,
+                      borderRadius: colorTokens.radius - 2,
+                    },
+                  ]}
+                  testID={`frequency-chip-${f.value}`}
+                >
+                  <Text
+                    style={[
+                      styles.freqLabel,
+                      {
+                        color: active
+                          ? colors.accentForeground
+                          : colors.foreground,
+                      },
+                    ]}
+                  >
+                    {f.label}
+                  </Text>
+                  <Text
+                    style={[styles.freqHint, { color: colors.mutedForeground }]}
+                    numberOfLines={1}
+                  >
+                    {f.hint}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Category grid */}
@@ -232,7 +319,7 @@ export default function ExpenseFormScreen() {
                       borderRadius: colorTokens.radius - 2,
                     },
                   ]}
-                  testID={`category-chip-${c.name}`}
+                  testID={`recurring-category-chip-${c.name}`}
                 >
                   <Ionicons
                     name={c.icon}
@@ -257,30 +344,9 @@ export default function ExpenseFormScreen() {
             })}
           </View>
 
-          {/* Description */}
+          {/* Start date */}
           <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Description
-          </Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescDraft}
-            placeholder="Flat white, bus ticket, groceries…"
-            placeholderTextColor={colors.mutedForeground}
-            style={[
-              styles.descInput,
-              {
-                color: colors.foreground,
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderRadius: colorTokens.radius - 2,
-              },
-            ]}
-            testID="input-description"
-          />
-
-          {/* Date */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Date
+            Starts on
           </Text>
           <ScrollView
             horizontal
@@ -288,18 +354,18 @@ export default function ExpenseFormScreen() {
             contentContainerStyle={styles.dateChips}
           >
             {dates.map((d) => {
-              const active = date === d;
+              const active = startDate === d;
               return (
                 <Pressable
                   key={d}
-                  onPress={() => setDateDraft(d)}
+                  onPress={() => setStartDraft(d)}
                   style={[
                     styles.dateChip,
                     {
                       backgroundColor: active ? colors.primary : colors.secondary,
                     },
                   ]}
-                  testID={`date-chip-${d}`}
+                  testID={`start-date-chip-${d}`}
                 >
                   <Text
                     style={[
@@ -317,6 +383,25 @@ export default function ExpenseFormScreen() {
               );
             })}
           </ScrollView>
+
+          {backfilling ? (
+            <View
+              style={[
+                styles.hintCard,
+                { backgroundColor: colors.accent, borderRadius: colorTokens.radius - 2 },
+              ]}
+            >
+              <Ionicons
+                name="sparkles"
+                size={16}
+                color={colors.accentForeground}
+              />
+              <Text style={[styles.hintText, { color: colors.accentForeground }]}>
+                Ember will log every occurrence since{' '}
+                {dateLabel(startDate)} the moment you save.
+              </Text>
+            </View>
+          ) : null}
 
           {saveError ? (
             <Text style={[styles.errorText, { color: colors.destructive }]}>
@@ -338,19 +423,19 @@ export default function ExpenseFormScreen() {
               opacity: !isValid || pending ? 0.45 : pressed ? 0.85 : 1,
             },
           ]}
-          testID="button-save-expense"
+          testID="button-save-recurring"
         >
           {pending ? (
             <ActivityIndicator color={colors.primaryForeground} />
           ) : (
             <>
               <Ionicons
-                name="checkmark"
+                name="repeat"
                 size={19}
                 color={colors.primaryForeground}
               />
               <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-                {isEdit ? 'Save changes' : 'Log expense'}
+                {isEdit ? 'Save changes' : 'Start the ritual'}
               </Text>
             </>
           )}
@@ -405,6 +490,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 10,
   },
+  descInput: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: 'Outfit_400Regular',
+  },
+  freqRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  freqChip: {
+    flex: 1,
+    borderWidth: 1.5,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    gap: 2,
+    alignItems: 'center',
+  },
+  freqLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  freqHint: {
+    fontSize: 10.5,
+    fontFamily: 'Outfit_400Regular',
+  },
   catGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -424,13 +536,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_500Medium',
     flexShrink: 1,
   },
-  descInput: {
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    fontFamily: 'Outfit_400Regular',
-  },
   dateChips: {
     gap: 8,
     paddingVertical: 2,
@@ -442,6 +547,19 @@ const styles = StyleSheet.create({
   },
   dateChipText: {
     fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
+  },
+  hintCard: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 12,
+    alignItems: 'flex-start',
+    marginTop: 10,
+  },
+  hintText: {
+    flex: 1,
+    fontSize: 12.5,
+    lineHeight: 18,
     fontFamily: 'Outfit_500Medium',
   },
   errorText: {

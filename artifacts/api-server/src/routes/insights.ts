@@ -1,21 +1,31 @@
 import { Router } from "express";
-import { gte, lte, and } from "drizzle-orm";
-import { db, expensesTable, budgetTable } from "@workspace/db";
-import { GetDailySummaryQueryParams } from "@workspace/api-zod";
+import { gte, lte, and, eq, sql } from "drizzle-orm";
+import { db, expensesTable, budgetTable, recurringExpensesTable } from "@workspace/db";
+import {
+  GetDailySummaryQueryParams,
+  GetSpendingStatsQueryParams,
+  GetSpendingTipsQueryParams,
+  GetWeeklySummaryQueryParams,
+} from "@workspace/api-zod";
+import {
+  addDays,
+  materializeDueRecurring,
+  monthlyEquivalent,
+  toDateString,
+  type Frequency,
+} from "../lib/recurrence";
+import { getOrCreatePreferences } from "./preferences";
 
 const router = Router();
 
-function toDateString(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function getWeekRange() {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((day + 6) % 7));
+/** Monday-to-Sunday range of the week containing `anchor` (YYYY-MM-DD). */
+function getWeekRange(anchor: string) {
+  const dt = new Date(anchor + "T00:00:00Z");
+  const day = dt.getUTCDay(); // 0=Sun
+  const monday = new Date(dt);
+  monday.setUTCDate(dt.getUTCDate() - ((day + 6) % 7));
   const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
   return { start: toDateString(monday), end: toDateString(sunday) };
 }
 
@@ -29,6 +39,20 @@ async function getOrCreateBudget() {
   return created;
 }
 
+function eq_date(date: string) {
+  return and(gte(expensesTable.date, date), lte(expensesTable.date, date));
+}
+
+type ReqLog = { error: (obj: unknown, msg?: string) => void };
+
+async function materializeSafe(upTo: string, log: ReqLog): Promise<void> {
+  try {
+    await materializeDueRecurring(upTo);
+  } catch (err) {
+    log.error({ err }, "recurring materialization failed");
+  }
+}
+
 // GET /expenses/summary/daily
 router.get("/expenses/summary/daily", async (req, res): Promise<void> => {
   const qp = GetDailySummaryQueryParams.safeParse(req.query);
@@ -38,6 +62,7 @@ router.get("/expenses/summary/daily", async (req, res): Promise<void> => {
   }
 
   const date = qp.data.date ?? toDateString(new Date());
+  await materializeSafe(date, req.log);
   const budget = await getOrCreateBudget();
   const dailyLimit = parseFloat(budget.dailyLimit);
 
@@ -77,13 +102,16 @@ router.get("/expenses/summary/daily", async (req, res): Promise<void> => {
   });
 });
 
-function eq_date(date: string) {
-  return and(gte(expensesTable.date, date), lte(expensesTable.date, date));
-}
-
 // GET /expenses/summary/weekly
 router.get("/expenses/summary/weekly", async (req, res): Promise<void> => {
-  const { start, end } = getWeekRange();
+  const qp = GetWeeklySummaryQueryParams.safeParse(req.query);
+  if (!qp.success) {
+    res.status(400).json({ error: qp.error.message });
+    return;
+  }
+  const anchor = qp.data.date ?? toDateString(new Date());
+  const { start, end } = getWeekRange(anchor);
+  await materializeSafe(anchor, req.log);
 
   const expenses = await db
     .select()
@@ -134,10 +162,96 @@ router.get("/expenses/summary/weekly", async (req, res): Promise<void> => {
   });
 });
 
+// GET /insights/stats — automated counters for dashboards
+router.get("/insights/stats", async (req, res): Promise<void> => {
+  const qp = GetSpendingStatsQueryParams.safeParse(req.query);
+  if (!qp.success) {
+    res.status(400).json({ error: qp.error.message });
+    return;
+  }
+
+  const date = qp.data.date ?? toDateString(new Date());
+  await materializeSafe(date, req.log);
+
+  const budget = await getOrCreateBudget();
+  const dailyLimit = parseFloat(budget.dailyLimit);
+  const monthlyLimit = parseFloat(budget.monthlyLimit);
+
+  const [y, m, d] = date.split("-").map((p) => parseInt(p, 10));
+  const monthStart = `${date.slice(0, 7)}-01`;
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const daysElapsed = d;
+
+  const monthExpenses = await db
+    .select()
+    .from(expensesTable)
+    .where(and(gte(expensesTable.date, monthStart), lte(expensesTable.date, date)));
+
+  const monthToDate = monthExpenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+  const avgPerDay = daysElapsed > 0 ? monthToDate / daysElapsed : 0;
+  const projectedMonthEnd = daysElapsed > 0 ? (monthToDate / daysElapsed) * daysInMonth : 0;
+  const monthPercentUsed = monthlyLimit > 0 ? Math.round((monthToDate / monthlyLimit) * 100) : 0;
+
+  // Under-budget streak: consecutive days (ending at `date`) with day total <= dailyLimit.
+  const lookbackStart = addDays(date, -364);
+  const recent = await db
+    .select()
+    .from(expensesTable)
+    .where(and(gte(expensesTable.date, lookbackStart), lte(expensesTable.date, date)));
+  const byDay: Record<string, number> = {};
+  for (const e of recent) {
+    byDay[e.date] = (byDay[e.date] ?? 0) + parseFloat(e.amount);
+  }
+  let underBudgetStreak = 0;
+  let cursor = date;
+  while (cursor >= lookbackStart) {
+    const total = byDay[cursor] ?? 0;
+    if (total > dailyLimit) break;
+    underBudgetStreak += 1;
+    cursor = addDays(cursor, -1);
+  }
+
+  const [{ count: totalExpenseCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(expensesTable);
+
+  const activeRules = await db
+    .select()
+    .from(recurringExpensesTable)
+    .where(eq(recurringExpensesTable.active, true));
+  const recurringMonthlyTotal = activeRules.reduce(
+    (s, r) => s + monthlyEquivalent(r.frequency as Frequency, parseFloat(r.amount)),
+    0,
+  );
+
+  res.json({
+    date,
+    monthToDate: parseFloat(monthToDate.toFixed(2)),
+    projectedMonthEnd: parseFloat(projectedMonthEnd.toFixed(2)),
+    monthlyLimit,
+    monthPercentUsed,
+    avgPerDay: parseFloat(avgPerDay.toFixed(2)),
+    daysElapsed,
+    daysInMonth,
+    underBudgetStreak,
+    totalExpenseCount,
+    activeRecurringCount: activeRules.length,
+    recurringMonthlyTotal: parseFloat(recurringMonthlyTotal.toFixed(2)),
+  });
+});
+
 // GET /insights/tips
 router.get("/insights/tips", async (req, res): Promise<void> => {
-  const today = toDateString(new Date());
+  const qp = GetSpendingTipsQueryParams.safeParse(req.query);
+  if (!qp.success) {
+    res.status(400).json({ error: qp.error.message });
+    return;
+  }
+  const today = qp.data.date ?? toDateString(new Date());
+  await materializeSafe(today, req.log);
   const budget = await getOrCreateBudget();
+  const prefs = await getOrCreatePreferences();
+  const alertThreshold = prefs.alertThreshold;
   const dailyLimit = parseFloat(budget.dailyLimit);
   const monthlyLimit = parseFloat(budget.monthlyLimit);
 
@@ -146,7 +260,7 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
     .from(expensesTable)
     .where(eq_date(today));
 
-  const { start: weekStart, end: weekEnd } = getWeekRange();
+  const { start: weekStart, end: weekEnd } = getWeekRange(today);
   const weekExpenses = await db
     .select()
     .from(expensesTable)
@@ -172,7 +286,7 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
 
   const percentUsed = dailyLimit > 0 ? (todayTotal / dailyLimit) * 100 : 0;
 
-  // Budget alerts
+  // Budget alerts (warning threshold is user-configurable)
   if (percentUsed >= 100) {
     alerts.push({
       id: "daily-over",
@@ -180,7 +294,7 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
       title: "Daily budget exceeded",
       message: `You have spent $${todayTotal.toFixed(2)} today, which is $${(todayTotal - dailyLimit).toFixed(2)} over your $${dailyLimit} daily limit.`,
     });
-  } else if (percentUsed >= 80) {
+  } else if (percentUsed >= alertThreshold) {
     alerts.push({
       id: "daily-warning",
       type: "warning",
@@ -196,6 +310,24 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
       type: "warning",
       title: "Monthly budget nearly full",
       message: `You have used ${Math.round(monthPercent)}% of your monthly budget with $${(monthlyLimit - monthTotal).toFixed(2)} remaining.`,
+    });
+  }
+
+  // Recurring cost awareness
+  const activeRules = await db
+    .select()
+    .from(recurringExpensesTable)
+    .where(eq(recurringExpensesTable.active, true));
+  const recurringMonthly = activeRules.reduce(
+    (s, r) => s + monthlyEquivalent(r.frequency as Frequency, parseFloat(r.amount)),
+    0,
+  );
+  if (monthlyLimit > 0 && recurringMonthly >= monthlyLimit * 0.4) {
+    tips.push({
+      id: "recurring-heavy",
+      type: "tip",
+      title: "Recurring costs are significant",
+      message: `Your recurring expenses add up to about $${recurringMonthly.toFixed(2)} a month — ${Math.round((recurringMonthly / monthlyLimit) * 100)}% of your monthly budget. Reviewing subscriptions is the fastest way to free up room.`,
     });
   }
 

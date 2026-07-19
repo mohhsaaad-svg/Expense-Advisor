@@ -34,6 +34,8 @@ import {
   getListExpensesQueryKey,
   getGetDailySummaryQueryKey,
   getGetWeeklySummaryQueryKey,
+  getGetSpendingStatsQueryKey,
+  getGetSpendingTipsQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -81,6 +83,8 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetDailySummaryQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetWeeklySummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
             title: "Record added",
             description: "Your expense has been successfully logged.",

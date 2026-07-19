@@ -1,21 +1,38 @@
-import { useGetDailySummary, getGetDailySummaryQueryKey, useGetSpendingTips, getGetSpendingTipsQueryKey, useGetWeeklySummary, getGetWeeklySummaryQueryKey } from "@workspace/api-client-react";
-import { formatCurrency } from "@/lib/utils";
+import { useGetDailySummary, getGetDailySummaryQueryKey, useGetSpendingTips, getGetSpendingTipsQueryKey } from "@workspace/api-client-react";
+import { localDateKey } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SummarySkeleton } from "@/components/Skeletons";
-import { Flame, Lightbulb, TrendingDown, Info, ShieldAlert, ArrowUpRight } from "lucide-react";
+import { Flame, Lightbulb, TrendingDown, ShieldAlert } from "lucide-react";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
+import { StatCards } from "@/components/StatCards";
+import { CountUp } from "@/components/CountUp";
+import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
+  const todayKey = localDateKey();
   const { data: summary, isLoading: loadingSummary } = useGetDailySummary(
-    {}, 
-    { query: { queryKey: getGetDailySummaryQueryKey() } }
+    { date: todayKey },
+    {
+      query: {
+        queryKey: getGetDailySummaryQueryKey({ date: todayKey }),
+        refetchInterval: 60_000,
+      },
+    }
   );
 
-  const { data: insights, isLoading: loadingInsights } = useGetSpendingTips({
-    query: { queryKey: getGetSpendingTipsQueryKey() }
-  });
+  const { data: insights, isLoading: loadingInsights } = useGetSpendingTips(
+    { date: todayKey },
+    {
+      query: {
+        queryKey: getGetSpendingTipsQueryKey({ date: todayKey }),
+        refetchInterval: 60_000,
+      },
+    }
+  );
+
+  const { format } = useCurrency();
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -55,6 +72,8 @@ export default function Dashboard() {
         <AddExpenseDialog />
       </div>
 
+      <StatCards />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-8">
           {loadingSummary || !summary ? (
@@ -67,14 +86,20 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="mb-8 flex items-baseline gap-3">
-                  <span className="text-6xl font-serif tracking-tighter text-foreground font-bold">{formatCurrency(summary.totalSpent)}</span>
-                  <span className="text-xl text-muted-foreground font-light">/ {formatCurrency(summary.dailyLimit)}</span>
+                  <CountUp
+                    value={summary.totalSpent}
+                    format={format}
+                    className="text-6xl font-serif tracking-tighter text-foreground font-bold"
+                  />
+                  <span className="text-xl text-muted-foreground font-light">/ {format(summary.dailyLimit)}</span>
                 </div>
                 
                 <div className="space-y-4">
                   <div className="flex justify-between text-sm font-medium">
-                    <span className={cn("transition-colors", summary.percentUsed >= 100 ? "text-destructive font-bold" : "text-foreground")}>
-                      {summary.percentUsed >= 100 ? "Limit exceeded" : `${formatCurrency(summary.remaining)} left to spend safely`}
+                    <span className={cn("transition-colors", summary.totalSpent > summary.dailyLimit ? "text-destructive font-bold" : "text-foreground")}>
+                      {summary.totalSpent > summary.dailyLimit
+                        ? `${format(summary.totalSpent - summary.dailyLimit)} over your limit`
+                        : `${format(summary.remaining)} left to spend safely`}
                     </span>
                     <span className="text-muted-foreground bg-secondary px-2 py-1 rounded-md text-xs font-bold">{Math.round(summary.percentUsed)}%</span>
                   </div>
@@ -98,7 +123,7 @@ export default function Dashboard() {
                       <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{cat.count} transaction{cat.count !== 1 ? 's' : ''}</div>
                     </div>
                     <div className="text-right">
-                      <div className="font-serif text-xl font-bold tracking-tight text-foreground">{formatCurrency(cat.total)}</div>
+                      <div className="font-serif text-xl font-bold tracking-tight text-foreground">{format(cat.total)}</div>
                       <div className="text-xs text-muted-foreground mt-1 font-medium">{Math.round(cat.percentage)}%</div>
                     </div>
                   </div>

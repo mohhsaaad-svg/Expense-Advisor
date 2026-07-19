@@ -16,10 +16,10 @@ import { ExpenseRow } from '@/components/ember/ExpenseRow';
 import {
   CATEGORIES,
   dateLabel,
-  formatMoney,
 } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
+import { useCurrency } from '@/hooks/useCurrency';
 import { Ionicons } from '@expo/vector-icons';
 import { useListExpenses, type Expense } from '@workspace/api-client-react';
 import * as Haptics from 'expo-haptics';
@@ -34,6 +34,7 @@ interface Section {
 export default function ExpensesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { format } = useCurrency();
   const [category, setCategory] = useState<string | null>(null);
 
   const query = useListExpenses(category ? { category } : undefined);
@@ -182,7 +183,7 @@ export default function ExpensesScreen() {
               <Text
                 style={[styles.sectionTotal, { color: colors.mutedForeground }]}
               >
-                {formatMoney(section.total)}
+                {format(section.total)}
               </Text>
             </View>
           )}

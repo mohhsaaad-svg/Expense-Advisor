@@ -15,6 +15,11 @@ export interface Expense {
   description: string;
   /** ISO date string (YYYY-MM-DD) */
   date: string;
+  /**
+     * Set when this expense was auto-logged from a recurring rule
+     * @nullable
+     */
+  recurringId: number | null;
   /** ISO datetime string */
   createdAt: string;
 }

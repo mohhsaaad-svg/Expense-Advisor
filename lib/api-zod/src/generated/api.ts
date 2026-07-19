@@ -124,6 +124,7 @@ export const ListExpensesResponseItem = zod.object({
   "category": zod.string().describe('Expense category (e.g. Food, Transport, Shopping)'),
   "description": zod.string(),
   "date": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "recurringId": zod.number().nullable().describe('Set when this expense was auto-logged from a recurring rule'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 export const ListExpensesResponse = zod.array(ListExpensesResponseItem)
@@ -151,6 +152,7 @@ export const CreateExpenseResponse = zod.object({
   "category": zod.string().describe('Expense category (e.g. Food, Transport, Shopping)'),
   "description": zod.string(),
   "date": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "recurringId": zod.number().nullable().describe('Set when this expense was auto-logged from a recurring rule'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 
@@ -168,6 +170,7 @@ export const GetExpenseResponse = zod.object({
   "category": zod.string().describe('Expense category (e.g. Food, Transport, Shopping)'),
   "description": zod.string(),
   "date": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "recurringId": zod.number().nullable().describe('Set when this expense was auto-logged from a recurring rule'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 
@@ -198,6 +201,7 @@ export const UpdateExpenseResponse = zod.object({
   "category": zod.string().describe('Expense category (e.g. Food, Transport, Shopping)'),
   "description": zod.string(),
   "date": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "recurringId": zod.number().nullable().describe('Set when this expense was auto-logged from a recurring rule'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 
@@ -237,9 +241,13 @@ export const GetDailySummaryResponse = zod.object({
 
 
 /**
- * Returns spending totals grouped by day for the current week
+ * Returns spending totals grouped by day for the week containing the given date
  * @summary This week's spending summary
  */
+export const GetWeeklySummaryQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
+})
+
 export const GetWeeklySummaryResponse = zod.object({
   "weekTotal": zod.number(),
   "dailyAverage": zod.number(),
@@ -253,9 +261,164 @@ export const GetWeeklySummaryResponse = zod.object({
 
 
 /**
+ * Month-to-date totals, projection, streaks and automated counters
+ * @summary Spending statistics and counters
+ */
+export const GetSpendingStatsQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
+})
+
+export const GetSpendingStatsResponse = zod.object({
+  "date": zod.string(),
+  "monthToDate": zod.number(),
+  "projectedMonthEnd": zod.number().describe('Straight-line projection of this month\'s spend'),
+  "monthlyLimit": zod.number(),
+  "monthPercentUsed": zod.number(),
+  "avgPerDay": zod.number(),
+  "daysElapsed": zod.number(),
+  "daysInMonth": zod.number(),
+  "underBudgetStreak": zod.number().describe('Consecutive days (ending today) at or under the daily limit'),
+  "totalExpenseCount": zod.number(),
+  "activeRecurringCount": zod.number(),
+  "recurringMonthlyTotal": zod.number().describe('Approximate monthly cost of all active recurring rules')
+})
+
+
+/**
+ * @summary List recurring expense rules
+ */
+export const ListRecurringExpensesResponseItem = zod.object({
+  "id": zod.number(),
+  "description": zod.string(),
+  "amount": zod.number(),
+  "category": zod.string(),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
+  "active": zod.boolean(),
+  "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+export const ListRecurringExpensesResponse = zod.array(ListRecurringExpensesResponseItem)
+
+
+/**
+ * Creates the rule and immediately auto-logs any occurrences due since its start date
+ * @summary Create recurring expense rule
+ */
+
+export const createRecurringExpenseBodyAmountMin = 0.01;
+
+
+
+
+export const CreateRecurringExpenseBody = zod.object({
+  "description": zod.string().min(1),
+  "amount": zod.number().min(createRecurringExpenseBodyAmountMin),
+  "category": zod.string().min(1),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "active": zod.boolean().optional()
+})
+
+export const CreateRecurringExpenseResponse = zod.object({
+  "id": zod.number(),
+  "description": zod.string(),
+  "amount": zod.number(),
+  "category": zod.string(),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
+  "active": zod.boolean(),
+  "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Update recurring expense rule
+ */
+export const UpdateRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const updateRecurringExpenseBodyAmountMin = 0.01;
+
+
+
+
+export const UpdateRecurringExpenseBody = zod.object({
+  "description": zod.string().min(1).optional(),
+  "amount": zod.number().min(updateRecurringExpenseBodyAmountMin).optional(),
+  "category": zod.string().min(1).optional(),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly']).optional(),
+  "startDate": zod.string().optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateRecurringExpenseResponse = zod.object({
+  "id": zod.number(),
+  "description": zod.string(),
+  "amount": zod.number(),
+  "category": zod.string(),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
+  "active": zod.boolean(),
+  "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * Already-logged expenses are kept (their recurring link is cleared)
+ * @summary Delete recurring expense rule
+ */
+export const DeleteRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteRecurringExpenseResponse = zod.void()
+
+
+/**
+ * @summary Get preferences
+ */
+export const GetPreferencesResponse = zod.object({
+  "id": zod.number(),
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Update preferences
+ */
+export const updatePreferencesBodyAlertThresholdMin = 50;
+export const updatePreferencesBodyAlertThresholdMax = 100;
+
+
+
+export const UpdatePreferencesBody = zod.object({
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "alertThreshold": zod.number().min(updatePreferencesBodyAlertThresholdMin).max(updatePreferencesBodyAlertThresholdMax)
+})
+
+export const UpdatePreferencesResponse = zod.object({
+  "id": zod.number(),
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
  * Returns tips and alerts based on spending patterns
  * @summary Get personalized spending tips
  */
+export const GetSpendingTipsQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
+})
+
 export const GetSpendingTipsResponse = zod.object({
   "tips": zod.array(zod.object({
   "id": zod.string(),
