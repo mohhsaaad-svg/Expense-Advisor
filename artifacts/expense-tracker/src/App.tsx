@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -41,7 +42,19 @@ function Router() {
 }
 
 function AuthGate() {
-  const { isLoading, isAuthenticated, login } = useAuth();
+  const { user, isLoading, isAuthenticated, login } = useAuth();
+
+  // With embedded (iframe) login/logout the page is never reloaded, so cached
+  // user-scoped queries would survive a session change. Clear them whenever
+  // the authenticated identity actually changes.
+  const lastUserId = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const id = user?.id ?? null;
+    if (lastUserId.current !== undefined && lastUserId.current !== id) {
+      queryClient.clear();
+    }
+    lastUserId.current = id;
+  }, [user]);
 
   if (isLoading) {
     return (

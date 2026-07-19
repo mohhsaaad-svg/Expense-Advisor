@@ -16,6 +16,7 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5 (artifacts/api-server), Replit Auth (OIDC) with session cookies, express-rate-limit (100 req/min/IP)
 - Frontend: React + Vite + wouter + shadcn/ui + TanStack Query (artifacts/expense-tracker, served at `/`)
+- Mobile: Expo SDK 54 + expo-router (artifacts/mobile, preview at `/mobile/`), same API via `@workspace/api-client-react` with Bearer-token sessions (expo-auth-session PKCE → `/api/mobile-auth/token-exchange`, token in SecureStore)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
@@ -27,6 +28,7 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - API routes: `artifacts/api-server/src/routes/` (expenses, budget, insights, auth, health)
 - Auth middleware: `artifacts/api-server/src/middlewares/`; frontend hook: `lib/replit-auth-web` (`useAuth`)
 - Frontend pages: `artifacts/expense-tracker/src/pages/` (Dashboard `/`, Expenses `/expenses`, Budget `/budget`)
+- Mobile screens: `artifacts/mobile/app/` (login, tabs: Today/Expenses/Budget, expense-form modal); shared UI in `components/ember/`; design tokens in `constants/colors.ts` (synced from web `index.css`, Outfit + Playfair Display fonts)
 
 ## Architecture decisions
 
@@ -53,6 +55,7 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - Re-run codegen after every OpenAPI spec change; body schemas must use entity-shaped names (`ExpenseInput`, not `CreateExpenseBody`)
 - Express 5: parse `req.params.id` (may be `string | string[]`), annotate async handlers `Promise<void>`
 - Never use `console.log` in server code — use `req.log` / `logger` (pino)
+- OAuth sign-in cannot complete inside the preview iframe (CSP `frame-ancestors` + Google refusing iframes) — `lib/replit-auth-web` opens login in a new top-level tab when embedded and re-fetches the session on focus; don't "simplify" that away
 
 ## Pointers
 
