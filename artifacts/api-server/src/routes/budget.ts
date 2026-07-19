@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
 import { db, budgetTable } from "@workspace/db";
 import { UpdateBudgetBody } from "@workspace/api-zod";
 
@@ -42,6 +43,7 @@ router.put("/budget", async (req, res): Promise<void> => {
       monthlyLimit: body.data.monthlyLimit.toString(),
       updatedAt: new Date(),
     })
+    .where(eq(budgetTable.id, existing.id))
     .returning();
 
   if (!updated) {
