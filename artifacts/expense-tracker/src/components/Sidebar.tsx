@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Receipt, PiggyBank, LogOut, Flame, Repeat } from "lucide-react";
+import { LayoutDashboard, Receipt, PiggyBank, LogOut, Flame, Repeat, Target, Sparkles } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +14,8 @@ export function Sidebar() {
     { href: "/expenses", label: "Expenses", icon: Receipt },
     { href: "/recurring", label: "Rituals", icon: Repeat },
     { href: "/budget", label: "Budget", icon: PiggyBank },
+    { href: "/goals", label: "Goals", icon: Target },
+    { href: "/coach", label: "Ask Ember", icon: Sparkles },
   ];
 
   const initials = user?.firstName && user?.lastName 
@@ -88,6 +90,8 @@ export function MobileNav() {
     { href: "/expenses", label: "Expenses", icon: Receipt },
     { href: "/recurring", label: "Rituals", icon: Repeat },
     { href: "/budget", label: "Budget", icon: PiggyBank },
+    { href: "/goals", label: "Goals", icon: Target },
+    { href: "/coach", label: "Ask Ember", icon: Sparkles },
   ];
 
   return (

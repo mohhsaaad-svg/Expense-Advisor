@@ -10,6 +10,8 @@ import Dashboard from '@/pages/Dashboard';
 import Expenses from '@/pages/Expenses';
 import Budget from '@/pages/Budget';
 import Recurring from '@/pages/Recurring';
+import Goals from '@/pages/Goals';
+import Coach from '@/pages/Coach';
 import { Flame } from 'lucide-react';
 
 const queryClient = new QueryClient({
@@ -38,6 +40,8 @@ function Router() {
       <Route path="/expenses" component={Expenses} />
       <Route path="/recurring" component={Recurring} />
       <Route path="/budget" component={Budget} />
+      <Route path="/goals" component={Goals} />
+      <Route path="/coach" component={Coach} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -51,12 +55,16 @@ function AuthGate() {
   // the authenticated identity actually changes.
   const lastUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
+    // Wait until the auth check has resolved: recording `null` while auth is
+    // still loading made the real user id look like an identity change on
+    // every page load, wiping the query cache (and any in-flight queries).
+    if (isLoading) return;
     const id = user?.id ?? null;
     if (lastUserId.current !== undefined && lastUserId.current !== id) {
       queryClient.clear();
     }
     lastUserId.current = id;
-  }, [user]);
+  }, [user, isLoading]);
 
   if (isLoading) {
     return (

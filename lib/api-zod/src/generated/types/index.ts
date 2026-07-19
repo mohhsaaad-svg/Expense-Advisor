@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './anthropicConversation';
+export * from './anthropicConversationInput';
+export * from './anthropicConversationWithMessages';
+export * from './anthropicMessage';
+export * from './anthropicMessageInput';
 export * from './authorizationSessionHeaderParameter';
 export * from './authUser';
 export * from './authUserEnvelope';
@@ -13,6 +18,9 @@ export * from './beginBrowserLoginParams';
 export * from './budget';
 export * from './budgetInput';
 export * from './categoryBreakdown';
+export * from './challenge';
+export * from './challengeInput';
+export * from './challengeStatus';
 export * from './dailySummary';
 export * from './daySpending';
 export * from './errorEnvelope';
@@ -24,8 +32,13 @@ export * from './getDailySummaryParams';
 export * from './getSpendingStatsParams';
 export * from './getSpendingTipsParams';
 export * from './getWeeklySummaryParams';
+export * from './goal';
+export * from './goalContribution';
+export * from './goalInput';
+export * from './goalUpdate';
 export * from './handleBrowserLoginCallbackParams';
 export * from './healthStatus';
+export * from './listChallengesParams';
 export * from './listExpensesParams';
 export * from './logoutBrowserSessionParams';
 export * from './logoutSuccess';

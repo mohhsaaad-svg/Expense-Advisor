@@ -1,0 +1,49 @@
+Please complete a security and reliability hardening pass for Expense Advisor. Preserve the current Ember design and existing functionality.
+
+Priority 1 — isolate each user’s data:
+
+- Add an owner/userId foreign key to expenses, budgets, preferences, and recurring-expense records.
+- Every create operation must assign the authenticated user’s ID from the server session. Never accept userId from the client.
+- Scope every read, update, delete, summary, insight, and recurring-materialization query to the authenticated user.
+- A user must never be able to access another user’s record by changing an ID in the URL.
+- Make budget and preferences unique per user.
+- Update recurring-expense uniqueness rules so they work independently for each user.
+- Create a safe database migration. Preserve existing data by assigning it to my current account; ask me for the account identifier only if it cannot be determined safely.
+- Do not delete or reset the production database.
+
+Priority 2 — correct financial calculations:
+
+- In `/insights/tips`, restrict monthly expenses from the first day of the selected month through the selected date. Do not include future dates or later months.
+- Decide and clearly document whether weekly “daily average” means seven calendar days or only days with spending.
+- Do not count days without expense data as verified “under-budget streak” days.
+- Keep monetary calculations precise; avoid floating-point errors for stored or aggregated financial values.
+
+Priority 3 — currency correctness:
+
+- Remove hardcoded `$` symbols from server-generated tips and alerts.
+- Format messages using the user’s selected currency.
+- Add currency ownership to financial records if required for future multi-currency support.
+- Do not implement exchange-rate conversion yet unless a reliable source and conversion-date model are included.
+
+Priority 4 — automated tests:
+
+Add tests proving that:
+
+1. Unauthenticated requests cannot access financial endpoints.
+2. User A cannot read, update, or delete User B’s expenses.
+3. Budgets, preferences, insights, and recurring items are isolated per user.
+4. Recurring materialization cannot generate records for the wrong user.
+5. Monthly insights exclude future dates and later months.
+6. Currency-aware messages do not hardcode dollars.
+7. Existing expense, budget, and recurring workflows still work.
+
+Also update `threat_model.md` to describe the current authentication, CORS, rate limiting, user isolation, and remaining risks accurately.
+
+Before finishing:
+
+- Run type checking, automated tests, and the production build.
+- Fix any failures.
+- Review the database migration carefully.
+- Do not publish or deploy automatically.
+- Do not change the existing UI styling.
+- Give me a concise summary of changed files, migration effects, test results, and any manual deployment steps.

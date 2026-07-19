@@ -287,6 +287,134 @@ export interface SpendingStats {
   recurringMonthlyTotal: number;
 }
 
+export interface AnthropicConversation {
+  id: number;
+  title: string;
+  /** ISO datetime string */
+  createdAt: string;
+}
+
+export interface AnthropicMessage {
+  id: number;
+  conversationId: number;
+  /** user or assistant */
+  role: string;
+  content: string;
+  /** ISO datetime string */
+  createdAt: string;
+}
+
+export interface AnthropicConversationInput {
+  /** @minLength 1 */
+  title: string;
+}
+
+export interface AnthropicMessageInput {
+  /** @minLength 1 */
+  content: string;
+}
+
+export interface AnthropicConversationWithMessages {
+  id: number;
+  title: string;
+  /** ISO datetime string */
+  createdAt: string;
+  messages: AnthropicMessage[];
+}
+
+export interface Goal {
+  id: number;
+  name: string;
+  /** Target amount in dollars */
+  targetAmount: number;
+  /** Amount saved so far, in dollars */
+  savedAmount: number;
+  /**
+     * Optional target date (YYYY-MM-DD)
+     * @nullable
+     */
+  deadline: string | null;
+  /** ISO datetime string */
+  createdAt: string;
+}
+
+export interface GoalInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 0.01 */
+  targetAmount: number;
+  /**
+     * Optional target date (YYYY-MM-DD)
+     * @nullable
+     */
+  deadline?: string | null;
+}
+
+export interface GoalUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minimum 0.01 */
+  targetAmount?: number;
+  /**
+     * Target date (YYYY-MM-DD) or null to clear
+     * @nullable
+     */
+  deadline?: string | null;
+}
+
+export interface GoalContribution {
+  /** Positive to add, negative to withdraw; saved amount never drops below zero */
+  amount: number;
+}
+
+export type ChallengeStatus = typeof ChallengeStatus[keyof typeof ChallengeStatus];
+
+
+export const ChallengeStatus = {
+  active: 'active',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface Challenge {
+  id: number;
+  name: string;
+  /**
+     * Category the challenge blocks; null means all spending counts
+     * @nullable
+     */
+  category: string | null;
+  /** ISO date string (YYYY-MM-DD) */
+  startDate: string;
+  durationDays: number;
+  /** Last day of the challenge, inclusive (YYYY-MM-DD) */
+  endDate: string;
+  status: ChallengeStatus;
+  /** Days into the challenge so far (0 before start, capped at durationDays) */
+  daysElapsed: number;
+  /** Number of logged expenses that break the challenge */
+  violations: number;
+  /** ISO datetime string */
+  createdAt: string;
+}
+
+export interface ChallengeInput {
+  /** @minLength 1 */
+  name: string;
+  /**
+     * Restrict to one category; omit or null to count all spending
+     * @nullable
+     */
+  category?: string | null;
+  /** Defaults to today (YYYY-MM-DD) */
+  startDate?: string;
+  /**
+     * @minimum 1
+     * @maximum 365
+     */
+  durationDays: number;
+}
+
 /**
  * Opaque session token — `Bearer <sid>`.
  */
@@ -347,5 +475,12 @@ export type GetSpendingTipsParams = {
  * ISO date string (YYYY-MM-DD) treated as "today", defaults to server date
  */
 date?: string;
+};
+
+export type ListChallengesParams = {
+/**
+ * Client-local date (YYYY-MM-DD) used to compute progress; defaults to the server date
+ */
+today?: string;
 };
 

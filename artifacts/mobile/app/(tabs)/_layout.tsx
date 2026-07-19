@@ -30,6 +30,19 @@ function NativeTabLayout() {
         <Icon sf="list.bullet" />
         <Label>Expenses</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="coach">
+        <Icon
+          sf={{
+            default: 'bubble.left.and.bubble.right',
+            selected: 'bubble.left.and.bubble.right.fill',
+          }}
+        />
+        <Label>Coach</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="goals">
+        <Icon sf="target" />
+        <Label>Goals</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="budget">
         <Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} />
         <Label>Budget</Label>
@@ -110,6 +123,46 @@ function ClassicTabLayout() {
             ) : (
               <Ionicons
                 name={focused ? 'receipt' : 'receipt-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="coach"
+        options={{
+          title: 'Coach',
+          tabBarIcon: ({ color, focused }) =>
+            isIOS ? (
+              <SymbolView
+                name={
+                  focused
+                    ? 'bubble.left.and.bubble.right.fill'
+                    : 'bubble.left.and.bubble.right'
+                }
+                tintColor={color}
+                size={24}
+              />
+            ) : (
+              <Ionicons
+                name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+                size={22}
+                color={color}
+              />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="goals"
+        options={{
+          title: 'Goals',
+          tabBarIcon: ({ color, focused }) =>
+            isIOS ? (
+              <SymbolView name="target" tintColor={color} size={24} />
+            ) : (
+              <Ionicons
+                name={focused ? 'trophy' : 'trophy-outline'}
                 size={22}
                 color={color}
               />

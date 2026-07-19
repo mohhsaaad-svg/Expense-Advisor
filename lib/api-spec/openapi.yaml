@@ -20,6 +20,12 @@ tags:
     description: Recurring expense rules (auto-logged)
   - name: preferences
     description: Display and alert preferences
+  - name: anthropic
+    description: Ember AI advisor chat (Anthropic-backed)
+  - name: goals
+    description: Savings goals
+  - name: challenges
+    description: No-spend challenges
   - name: Auth
     description: Browser and mobile authentication endpoints.
 paths:
@@ -534,6 +540,327 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /anthropic/conversations:
+    get:
+      operationId: listAnthropicConversations
+      tags: [anthropic]
+      summary: List all advisor conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnthropicConversation"
+    post:
+      operationId: createAnthropicConversation
+      tags: [anthropic]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnthropicConversationInput"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicConversation"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anthropic/conversations/{id}:
+    get:
+      operationId: getAnthropicConversation
+      tags: [anthropic]
+      summary: Get a conversation with its messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnthropicConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAnthropicConversation
+      tags: [anthropic]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anthropic/conversations/{id}/messages:
+    get:
+      operationId: listAnthropicMessages
+      tags: [anthropic]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnthropicMessage"
+    post:
+      operationId: sendAnthropicMessage
+      tags: [anthropic]
+      summary: Send a message and receive the assistant reply as an SSE stream
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnthropicMessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
+
+  /goals:
+    get:
+      operationId: listGoals
+      tags: [goals]
+      summary: List savings goals
+      responses:
+        "200":
+          description: List of goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Goal"
+    post:
+      operationId: createGoal
+      tags: [goals]
+      summary: Create a savings goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "201":
+          description: Created goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /goals/{id}:
+    patch:
+      operationId: updateGoal
+      tags: [goals]
+      summary: Update a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalUpdate"
+      responses:
+        "200":
+          description: Updated goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteGoal
+      tags: [goals]
+      summary: Delete a goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /goals/{id}/contribute:
+    post:
+      operationId: contributeToGoal
+      tags: [goals]
+      summary: Add to (or withdraw from) a goal's saved amount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalContribution"
+      responses:
+        "200":
+          description: Updated goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /challenges:
+    get:
+      operationId: listChallenges
+      tags: [challenges]
+      summary: List no-spend challenges with computed progress
+      parameters:
+        - name: today
+          in: query
+          required: false
+          description: Client-local date (YYYY-MM-DD) used to compute progress; defaults to the server date
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of challenges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Challenge"
+    post:
+      operationId: createChallenge
+      tags: [challenges]
+      summary: Start a no-spend challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChallengeInput"
+      responses:
+        "201":
+          description: Created challenge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Challenge"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /challenges/{id}:
+    delete:
+      operationId: deleteChallenge
+      tags: [challenges]
+      summary: Delete a challenge
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -939,3 +1266,170 @@ components:
         recurringMonthlyTotal:
           type: number
           description: Approximate monthly cost of all active recurring rules
+
+    AnthropicConversation:
+      type: object
+      required: [id, title, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    AnthropicMessage:
+      type: object
+      required: [id, conversationId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+          description: user or assistant
+        content:
+          type: string
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    AnthropicConversationInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+
+    AnthropicMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+
+    AnthropicConversationWithMessages:
+      type: object
+      required: [id, title, createdAt, messages]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          description: ISO datetime string
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnthropicMessage"
+
+    Goal:
+      type: object
+      required: [id, name, targetAmount, savedAmount, deadline, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        targetAmount:
+          type: number
+          description: Target amount in dollars
+        savedAmount:
+          type: number
+          description: Amount saved so far, in dollars
+        deadline:
+          type: [string, 'null']
+          description: Optional target date (YYYY-MM-DD)
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    GoalInput:
+      type: object
+      required: [name, targetAmount]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        targetAmount:
+          type: number
+          minimum: 0.01
+        deadline:
+          type: [string, 'null']
+          description: Optional target date (YYYY-MM-DD)
+
+    GoalUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        targetAmount:
+          type: number
+          minimum: 0.01
+        deadline:
+          type: [string, 'null']
+          description: Target date (YYYY-MM-DD) or null to clear
+
+    GoalContribution:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+          description: Positive to add, negative to withdraw; saved amount never drops below zero
+
+    Challenge:
+      type: object
+      required: [id, name, category, startDate, durationDays, endDate, status, daysElapsed, violations, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: [string, 'null']
+          description: Category the challenge blocks; null means all spending counts
+        startDate:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+        durationDays:
+          type: integer
+        endDate:
+          type: string
+          description: Last day of the challenge, inclusive (YYYY-MM-DD)
+        status:
+          type: string
+          enum: [active, completed, failed]
+        daysElapsed:
+          type: integer
+          description: Days into the challenge so far (0 before start, capped at durationDays)
+        violations:
+          type: integer
+          description: Number of logged expenses that break the challenge
+        createdAt:
+          type: string
+          description: ISO datetime string
+
+    ChallengeInput:
+      type: object
+      required: [name, durationDays]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: [string, 'null']
+          description: Restrict to one category; omit or null to count all spending
+        startDate:
+          type: string
+          description: Defaults to today (YYYY-MM-DD)
+        durationDays:
+          type: integer
+          minimum: 1
+          maximum: 365

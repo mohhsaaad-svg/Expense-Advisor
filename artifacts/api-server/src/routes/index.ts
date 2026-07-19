@@ -6,6 +6,9 @@ import budgetRouter from "./budget";
 import insightsRouter from "./insights";
 import recurringRouter from "./recurring";
 import preferencesRouter from "./preferences";
+import goalsRouter from "./goals";
+import challengesRouter from "./challenges";
+import advisorRouter from "./advisor";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -21,5 +24,8 @@ router.use(budgetRouter);
 router.use(insightsRouter);
 router.use(recurringRouter);
 router.use(preferencesRouter);
+router.use(goalsRouter);
+router.use(challengesRouter);
+router.use(advisorRouter);
 
 export default router;

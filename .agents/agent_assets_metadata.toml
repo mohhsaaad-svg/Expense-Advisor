@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "HUxA-5QUX0BTAxZsPbxGp"
+uri = "file://artifacts/competitive-report/public/Ember-Competitive-Analysis.pdf"
+type = "pdf"
+title = "Ember — Competitive Analysis (PDF)"

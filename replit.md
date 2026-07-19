@@ -25,10 +25,10 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 
 - API contract (source of truth): `lib/api-spec/openapi.yaml`
 - DB schema: `lib/db/src/schema/` (expenses, budget, recurring_expenses, preferences, users/sessions for auth)
-- API routes: `artifacts/api-server/src/routes/` (expenses, budget, recurring, preferences, insights, auth, health); recurrence date math in `src/lib/recurrence.ts`
+- API routes: `artifacts/api-server/src/routes/` (expenses, budget, recurring, preferences, insights, advisor, goals, challenges, auth, health); recurrence date math in `src/lib/recurrence.ts`
 - Auth middleware: `artifacts/api-server/src/middlewares/`; frontend hook: `lib/replit-auth-web` (`useAuth`)
-- Frontend pages: `artifacts/expense-tracker/src/pages/` (Dashboard `/`, Expenses `/expenses`, Rituals `/recurring`, Budget `/budget`)
-- Mobile screens: `artifacts/mobile/app/` (login, tabs: Today/Expenses/Budget, expense-form + recurring-form modals); shared UI in `components/ember/`; design tokens in `constants/colors.ts` (synced from web `index.css`, Outfit + Playfair Display fonts)
+- Frontend pages: `artifacts/expense-tracker/src/pages/` (Dashboard `/`, Expenses `/expenses`, Rituals `/recurring`, Budget `/budget`, Goals `/goals`, Coach `/coach`)
+- Mobile screens: `artifacts/mobile/app/` (login, tabs: Today/Expenses/Coach/Goals/Budget, expense-form + recurring-form modals); shared UI in `components/ember/`; design tokens in `constants/colors.ts` (synced from web `index.css`, Outfit + Playfair Display fonts); SSE streaming helper in `lib/sse.ts` (expo/fetch on native — RN fetch can't stream)
 
 ## Architecture decisions
 
@@ -40,6 +40,11 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - All insight endpoints (daily, weekly, stats, tips) accept an optional `?date=` — clients pass the device-local date so every dashboard number reflects the same logical day regardless of server timezone
 - Preferences are a single get-or-create row (currency, alertThreshold 50–100); alertThreshold drives insight warnings, currency drives all client money formatting (JPY renders without decimals)
 - `GET /insights/stats` powers the month counters: month-to-date, projected month-end (avg/day × days), under-budget streak, avg/day, active ritual count + committed monthly total
+- AI Coach ("Ask Ember"): `POST /anthropic/conversations/{id}/messages` streams SSE (`data: {content}` frames, then `{done:true}` or `{error}`); server grounds claude-sonnet-4-6 with a system prompt built from live budget/expense/goal/challenge data; conversations auto-title from the first message (when title is empty or a "New chat"/"New Conversation" placeholder). Guardrails: 4000-char message cap, ~60k-char history budget (newest-first) with same-role runs merged before the model call, 10 req/min rate limit on the message route
+- Goals: CRUD + `POST /goals/{id}/contribute` — atomic SQL update (`GREATEST(0, saved + delta)`), safe under concurrent add/withdraw. Challenges (no-spend): status computed at read time from expenses in the window — clients pass `?today=` (device-local date); failed iff violations > 0
+- Expense categories are duplicated per client (web `src/lib/categories.ts`, mobile `constants/categories.ts`) and must stay in sync — challenge violations match category by exact string equality
+- AuthGate clears the query cache only on a real identity change *after* auth resolves — recording identity while auth is still loading made every boot look like a user switch and wiped in-flight queries (Coach page hung blank); don't "simplify" the isLoading guard away
+- Web Coach page resumes the most recent conversation on first list load; its list query sets `retry: 2, refetchOnMount: "always"` as defense against interrupted boot fetches (global default is `retry: false`)
 
 ## Product
 
@@ -47,6 +52,8 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - Rituals: recurring expenses (daily/weekly/monthly) that auto-log on schedule, with pause/resume, backfill from start date, and "Auto" badges on generated entries
 - Expense log with date/category filters and add/edit/delete
 - Budget settings for daily and monthly limits; preferences for display currency (7 codes) and alert threshold
+- Ask Ember (web `/coach`, mobile Coach tab): streaming AI money coach grounded in the user's actual budget, spending, goals, and challenges; conversation history with delete + auto-titles
+- Goals & Challenges (web `/goals`, mobile Goals tab): savings goals with progress and add/withdraw contributions (optional deadlines); no-spend challenges per category (7/14/21/30 days) with server-computed active/completed/failed status
 - Login required (Replit Auth); user identity + logout in the app shell
 
 ## User preferences

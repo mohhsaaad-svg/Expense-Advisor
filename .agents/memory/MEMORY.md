@@ -1,3 +1,4 @@
 - [OpenAPI codegen format quirks](openapi-codegen-formats.md) — strip `format: uri`/`email` from openapi.yaml; orval emits zod v4 calls that break the pinned zod v3.
 - [Edit tool mangles $' and $&](edit-tool-dollar-replacement.md) — new_string expands JS replace patterns; use WriteFile when inserting `$` next to quotes/backticks.
 - [Running one-off TS scripts](workspace-script-running.md) — no tsx/ts-node in this workspace; bundle with package-local esbuild via `pnpm --filter <pkg> exec esbuild`, then node.
+- [Testing Replit Auth override](testing-issuer-override.md) — restarting api-server mid-test clears the tester's ISSUER_URL login override; have the tester re-apply it, restart once after testing.

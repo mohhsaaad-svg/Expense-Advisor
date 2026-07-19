@@ -466,3 +466,254 @@ export const UpdateBudgetResponse = zod.object({
 })
 
 
+/**
+ * @summary List all advisor conversations
+ */
+export const ListAnthropicConversationsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+export const ListAnthropicConversationsResponse = zod.array(ListAnthropicConversationsResponseItem)
+
+
+/**
+ * @summary Create a new conversation
+ */
+
+
+
+export const CreateAnthropicConversationBody = zod.object({
+  "title": zod.string().min(1)
+})
+
+export const CreateAnthropicConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Get a conversation with its messages
+ */
+export const GetAnthropicConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetAnthropicConversationResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string'),
+  "messages": zod.array(zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string().describe('user or assistant'),
+  "content": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string')
+}))
+})
+
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteAnthropicConversationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteAnthropicConversationResponse = zod.void()
+
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListAnthropicMessagesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListAnthropicMessagesResponseItem = zod.object({
+  "id": zod.number(),
+  "conversationId": zod.number(),
+  "role": zod.string().describe('user or assistant'),
+  "content": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+export const ListAnthropicMessagesResponse = zod.array(ListAnthropicMessagesResponseItem)
+
+
+/**
+ * @summary Send a message and receive the assistant reply as an SSE stream
+ */
+export const SendAnthropicMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const SendAnthropicMessageBody = zod.object({
+  "content": zod.string().min(1)
+})
+
+export const SendAnthropicMessageResponse = zod.unknown()
+
+
+/**
+ * @summary List savings goals
+ */
+export const ListGoalsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "targetAmount": zod.number().describe('Target amount in dollars'),
+  "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
+  "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+export const ListGoalsResponse = zod.array(ListGoalsResponseItem)
+
+
+/**
+ * @summary Create a savings goal
+ */
+
+export const createGoalBodyTargetAmountMin = 0.01;
+
+
+
+export const CreateGoalBody = zod.object({
+  "name": zod.string().min(1),
+  "targetAmount": zod.number().min(createGoalBodyTargetAmountMin),
+  "deadline": zod.string().nullish().describe('Optional target date (YYYY-MM-DD)')
+})
+
+export const CreateGoalResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "targetAmount": zod.number().describe('Target amount in dollars'),
+  "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
+  "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Update a goal
+ */
+export const UpdateGoalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const updateGoalBodyTargetAmountMin = 0.01;
+
+
+
+export const UpdateGoalBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "targetAmount": zod.number().min(updateGoalBodyTargetAmountMin).optional(),
+  "deadline": zod.string().nullish().describe('Target date (YYYY-MM-DD) or null to clear')
+})
+
+export const UpdateGoalResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "targetAmount": zod.number().describe('Target amount in dollars'),
+  "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
+  "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Delete a goal
+ */
+export const DeleteGoalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteGoalResponse = zod.void()
+
+
+/**
+ * @summary Add to (or withdraw from) a goal's saved amount
+ */
+export const ContributeToGoalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ContributeToGoalBody = zod.object({
+  "amount": zod.number().describe('Positive to add, negative to withdraw; saved amount never drops below zero')
+})
+
+export const ContributeToGoalResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "targetAmount": zod.number().describe('Target amount in dollars'),
+  "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
+  "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary List no-spend challenges with computed progress
+ */
+export const ListChallengesQueryParams = zod.object({
+  "today": zod.coerce.string().optional().describe('Client-local date (YYYY-MM-DD) used to compute progress; defaults to the server date')
+})
+
+export const ListChallengesResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "category": zod.string().nullable().describe('Category the challenge blocks; null means all spending counts'),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "durationDays": zod.number(),
+  "endDate": zod.string().describe('Last day of the challenge, inclusive (YYYY-MM-DD)'),
+  "status": zod.enum(['active', 'completed', 'failed']),
+  "daysElapsed": zod.number().describe('Days into the challenge so far (0 before start, capped at durationDays)'),
+  "violations": zod.number().describe('Number of logged expenses that break the challenge'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+export const ListChallengesResponse = zod.array(ListChallengesResponseItem)
+
+
+/**
+ * @summary Start a no-spend challenge
+ */
+
+export const createChallengeBodyDurationDaysMax = 365;
+
+
+
+export const CreateChallengeBody = zod.object({
+  "name": zod.string().min(1),
+  "category": zod.string().nullish().describe('Restrict to one category; omit or null to count all spending'),
+  "startDate": zod.string().optional().describe('Defaults to today (YYYY-MM-DD)'),
+  "durationDays": zod.number().min(1).max(createChallengeBodyDurationDaysMax)
+})
+
+export const CreateChallengeResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "category": zod.string().nullable().describe('Category the challenge blocks; null means all spending counts'),
+  "startDate": zod.string().describe('ISO date string (YYYY-MM-DD)'),
+  "durationDays": zod.number(),
+  "endDate": zod.string().describe('Last day of the challenge, inclusive (YYYY-MM-DD)'),
+  "status": zod.enum(['active', 'completed', 'failed']),
+  "daysElapsed": zod.number().describe('Days into the challenge so far (0 before start, capped at durationDays)'),
+  "violations": zod.number().describe('Number of logged expenses that break the challenge'),
+  "createdAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Delete a challenge
+ */
+export const DeleteChallengeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteChallengeResponse = zod.void()
+
+

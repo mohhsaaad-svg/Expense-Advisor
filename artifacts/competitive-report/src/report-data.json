@@ -1,0 +1,227 @@
+{
+  "meta": {
+    "product": "Ember",
+    "title": "Competitive Analysis",
+    "subtitle": "Where the money-app market cracked open — and how Ember takes the gap",
+    "category": "Personal finance / daily expense tracking",
+    "date": "July 19, 2026",
+    "confidential": "Internal strategy document"
+  },
+  "positioning": {
+    "statement": "For people who want to change their spending habits — not just review dashboards of what already happened — Ember is a daily money companion that turns tracking into a 10-second ritual, with streaks, auto-logged rituals, and an AI coach that knows your numbers. Unlike the $100-a-year bank-sync dashboards (YNAB, Monarch, Copilot), Ember is free, runs on web, iPhone and Android, needs no bank credentials, and works in any currency."
+  },
+  "recommendations": [
+    {
+      "title": "Ship the AI coach now — the trusted-coach lane is empty",
+      "detail": "Cleo's App Store rating collapsed from 4.5 to 2.9 stars on upsell fatigue, and Origin went upmarket into SEC-regulated wealth planning. Nobody owns a coach that is grounded in your real daily spending and has no lending products to push. \"Ask Ember\" ships in this release."
+    },
+    {
+      "title": "Weaponize the price wedge — court the YNAB refugees",
+      "detail": "YNAB legacy users saw prices nearly double to $99–109/yr, and its own community now runs regular complaint threads. A free product plus CSV import is a ready-made off-ramp; the switching story writes itself."
+    },
+    {
+      "title": "Own habit-building before the giants notice",
+      "detail": "None of the big three has streak mechanics; a wave of tiny indie apps (Expenie, StreakSave, Hunter Vault) proves demand but lacks depth. Goals and no-spend challenges — shipping in this release — deepen a moat the incumbents' automation-first architecture can't easily copy."
+    }
+  ],
+  "landscape": [
+    {
+      "name": "YNAB",
+      "stage": "Private, ~20-yr brand",
+      "pricing": "$14.99/mo · $99–109/yr",
+      "strength": "Cult methodology, best-in-class debt tools, free live workshops",
+      "weakness": "Price nearly doubled for legacy users; weeks-long learning curve; bank sync frequently breaks; no offline entry",
+      "vsEmber": "Ember: free, 10-second logging, no methodology homework. YNAB wins on bank sync + debt-planning depth."
+    },
+    {
+      "name": "Monarch Money",
+      "stage": "VC-backed (reported $75M Series B, 2025)",
+      "pricing": "$14.99/mo · $99.99/yr",
+      "strength": "The \"Mint successor\"; couples/household sharing; iOS + Android + web",
+      "weakness": "No free tier and only a 7-day trial; US-bank-centric; passive review tool, not habit change",
+      "vsEmber": "Ember: free and global (any currency, no US bank needed). Monarch wins on net-worth view + couples mode (our roadmap gap)."
+    },
+    {
+      "name": "Copilot Money",
+      "stage": "VC-backed design darling",
+      "pricing": "$10.99–13/mo · ~$70–100/yr",
+      "strength": "Best-in-class design and AI transaction categorization",
+      "weakness": "iOS/Mac only — no Android, no web; US banks only; no couples sharing; no investment tracking",
+      "vsEmber": "Ember matches the design bar with warmth — on every platform Copilot abandoned (web + Android)."
+    },
+    {
+      "name": "Cleo",
+      "stage": "VC-backed AI chatbot",
+      "pricing": "Freemium · Plus ~$5.99/mo + cash advances",
+      "strength": "Genuine personality; Gen-Z brand resonance; proved people will chat with a money AI",
+      "weakness": "App Store rating collapsed 4.5 → 2.9; users report bait-and-switch cash-advance upsells (\"promised $250, paid $20\")",
+      "vsEmber": "Ember's coach has no loans to sell — advice with no conflict of interest. Cleo wins on brand reach."
+    },
+    {
+      "name": "Origin",
+      "stage": "VC-backed, SEC-registered",
+      "pricing": "$99/yr",
+      "strength": "Regulated AI financial advisor; bundles tax filing, investing, estate planning",
+      "weakness": "Wealth-building focus, not daily spending habits; heavier product; annual commitment",
+      "vsEmber": "Different job: Origin plans your wealth, Ember changes your week. Origin proves people pay $99/yr for AI advice."
+    },
+    {
+      "name": "Rocket Money",
+      "stage": "Public parent (Rocket Companies)",
+      "pricing": "Free + premium $6–12/mo (choose-your-price)",
+      "strength": "Subscription-cancellation hook; massive brand distribution",
+      "weakness": "Trustpilot 3.2/5; recurring complaints about aggressive upsells and its own cancellation flow",
+      "vsEmber": "Ember is what it says it is — no upsell engine. Rocket wins on bill negotiation (a job Ember doesn't do)."
+    },
+    {
+      "name": "PocketGuard",
+      "stage": "Small independent",
+      "pricing": "Freemium · Plus ~$74.99/yr",
+      "strength": "One great number: \"In My Pocket\" safe-to-spend",
+      "weakness": "Shallow beyond that number; sync reliability complaints; little habit or coaching value",
+      "vsEmber": "Ember's daily summary + coach covers the same job with depth. PocketGuard wins on bank-linked simplicity."
+    }
+  ],
+  "watchlist": "Gamified indie trackers — Expenie, Spendr, StreakSave, Hunter Vault — are tiny, mostly single-platform, and unfunded. They validate the streak/habit niche without owning it. Watch monthly; if one raises funding or tops charts, accelerate.",
+  "pricingBars": [
+    { "name": "Ember", "annual": 0, "label": "$0", "ember": true },
+    { "name": "Cleo Plus", "annual": 72, "label": "~$72/yr" },
+    { "name": "PocketGuard", "annual": 75, "label": "~$75/yr" },
+    { "name": "Rocket Money", "annual": 84, "label": "~$84/yr typical" },
+    { "name": "Copilot", "annual": 100, "label": "~$70–100/yr" },
+    { "name": "Origin", "annual": 99, "label": "$99/yr" },
+    { "name": "Monarch", "annual": 100, "label": "$99.99/yr" },
+    { "name": "YNAB", "annual": 109, "label": "$99–109/yr" }
+  ],
+  "featureMatrix": {
+    "columns": ["Ember", "YNAB", "Monarch", "Copilot", "Rocket $", "PocketGrd", "Cleo", "Origin"],
+    "legend": "Green = Ember advantage · Check = has it · Half = partial/limited · Cross = missing. Weight = how often it decides the buyer's choice (1–5).",
+    "rows": [
+      { "feature": "Free core product", "weight": 5, "cells": ["win", "no", "no", "no", "partial", "partial", "partial", "no"] },
+      { "feature": "AI coach grounded in your data", "weight": 5, "cells": ["win", "partial", "partial", "partial", "no", "no", "yes", "yes"], "note": "Ember: shipping now, no upsell conflicts" },
+      { "feature": "Web + iPhone + Android", "weight": 4, "cells": ["win", "yes", "yes", "no", "yes", "yes", "partial", "yes"] },
+      { "feature": "Habit mechanics (streaks, challenges)", "weight": 4, "cells": ["win", "no", "no", "no", "no", "no", "partial", "no"] },
+      { "feature": "10-second manual logging", "weight": 4, "cells": ["win", "partial", "partial", "no", "no", "partial", "no", "no"] },
+      { "feature": "Automatic bank sync", "weight": 4, "cells": ["no", "yes", "yes", "yes", "yes", "yes", "yes", "yes"], "note": "Ember's deliberate trade: mindfulness + privacy" },
+      { "feature": "Recurring auto-log without bank access", "weight": 3, "cells": ["win", "no", "no", "no", "no", "no", "no", "no"], "note": "Ember Rituals" },
+      { "feature": "Multi-currency / non-US users", "weight": 3, "cells": ["win", "partial", "no", "no", "no", "partial", "partial", "no"] },
+      { "feature": "Savings goals", "weight": 3, "cells": ["yes", "yes", "yes", "partial", "yes", "yes", "yes", "yes"], "note": "Table stakes — Ember ships them in this release" },
+      { "feature": "No bank credentials required", "weight": 3, "cells": ["win", "no", "no", "no", "no", "no", "no", "no"] },
+      { "feature": "Couples / shared budgets", "weight": 3, "cells": ["no", "partial", "yes", "no", "no", "partial", "no", "partial"], "note": "Ember roadmap — next quarter" },
+      { "feature": "Investment / net-worth tracking", "weight": 2, "cells": ["no", "partial", "yes", "no", "partial", "no", "no", "yes"], "note": "Out of scope: Ember is a spending coach" }
+    ]
+  },
+  "positioningMap": {
+    "xAxis": { "left": "Automation-first (review the past)", "right": "Habit-first (change the future)" },
+    "yAxis": { "bottom": "Free", "top": "$100+/yr" },
+    "whiteSpaceLabel": "THE GAP: habit-first, product-grade, free — only tiny indies live here",
+    "points": [
+      { "name": "YNAB", "x": 0.15, "y": 0.93, "dx": 8, "dy": -2 },
+      { "name": "Monarch", "x": 0.09, "y": 0.86, "dx": 8, "dy": 10 },
+      { "name": "Origin", "x": 0.22, "y": 0.9, "dx": 8, "dy": 8 },
+      { "name": "Copilot", "x": 0.13, "y": 0.72, "dx": 8, "dy": 4 },
+      { "name": "Cleo", "x": 0.45, "y": 0.5, "dx": 8, "dy": 4 },
+      { "name": "Rocket Money", "x": 0.2, "y": 0.32, "dx": 8, "dy": 4 },
+      { "name": "PocketGuard", "x": 0.31, "y": 0.27, "dx": 8, "dy": 12 },
+      { "name": "Indie trackers", "x": 0.82, "y": 0.12, "dx": -66, "dy": -10, "minor": true },
+      { "name": "EMBER", "x": 0.9, "y": 0.04, "dx": -18, "dy": -16, "ember": true }
+    ]
+  },
+  "whiteSpace": [
+    {
+      "title": "Habit-first with product depth, free",
+      "evidence": "The entire lower-right quadrant is empty except unfunded indie apps. The big three are architecturally automation-first — copying streaks would fight their own bank-sync DNA and their $100/yr price anchor."
+    },
+    {
+      "title": "An AI money coach people can trust",
+      "evidence": "Cleo proved demand and then burned trust (4.5 → 2.9 stars; cash-advance conflicts). Origin proved willingness to pay but went regulated wealth planning. A coach with no products to push, grounded in your actual daily spending, is unclaimed."
+    },
+    {
+      "title": "The non-US / multi-currency spender",
+      "evidence": "Copilot is US-banks-only; Monarch and Rocket are US-centric; Plaid coverage defines their market. Manual-first architecture makes Ember global by default — travelers, cash economies, seven currencies today."
+    },
+    {
+      "title": "The YNAB price-refugee off-ramp",
+      "evidence": "Price is YNAB's #1 documented complaint after fees nearly doubled for legacy users. Free + CSV import + a gentler learning curve is a switching story that needs zero persuasion."
+    }
+  ],
+  "kano": {
+    "basics": ["Category tracking & budgets", "Recurring-expense handling", "Savings goals (why Ember ships them now)", "Daily/weekly summaries"],
+    "performance": ["Bank-sync reliability (their arms race, not ours)", "Categorization accuracy", "Breadth of linked accounts"],
+    "delighters": ["Copilot: design polish", "Cleo: personality", "YNAB: live workshops", "Ember: streak flames, rituals, a coach that knows your numbers"],
+    "insight": "Kano's law: today's delighters are tomorrow's basics. An AI coach will be table stakes by 2027 — YNAB is already previewing an \"AI prediction engine.\" The window to own coach-first positioning is now."
+  },
+  "headToHead": {
+    "wins": [
+      "Price: $0 vs $72–109/yr across the field",
+      "Platforms: web + iPhone + Android (Copilot: iOS-only; Cleo: app-only)",
+      "Privacy: zero bank credentials — nothing to breach, no Plaid dependency",
+      "Habit engine: streaks, rituals, under-budget mechanics — unique among funded players",
+      "Coach without conflicts: no cash advances, no premium nags mid-advice",
+      "Global by design: any currency, no US bank required"
+    ],
+    "losses": [
+      "No automatic bank sync — the single biggest objection; manual-first must stay genuinely 10-second fast",
+      "No investment / net-worth tracking (Monarch, Origin win that job)",
+      "No couples / shared mode yet — Monarch's flagship; on our roadmap",
+      "Zero brand trust vs a 20-year YNAB or a public Rocket parent"
+    ],
+    "neutralizers": [
+      "Rituals auto-log fixed spends — kills \"manual is tedious\" for rent, subscriptions, coffee",
+      "CSV import (roadmap) — collapses switching cost from any incumbent",
+      "Coach weekly reviews — replaces the dashboard-review job the sync apps sell"
+    ]
+  },
+  "actionPlan": [
+    {
+      "action": "Ship \"Ask Ember\" — AI coach grounded in the user's live spending data",
+      "why": "The trusted-coach lane is empty: Cleo burned trust (2.9 stars), Origin went regulated wealth planning. First-mover window before AI coaching becomes table stakes.",
+      "status": "Shipping in this release",
+      "source": [4, 5]
+    },
+    {
+      "action": "Ship savings goals + no-spend challenges wired into the streak system",
+      "why": "Goals are a Kano basic every rival has; challenges convert Ember's existing streak users into daily actives. Indies validate the niche but lack depth.",
+      "status": "Shipping in this release",
+      "source": [3]
+    },
+    {
+      "action": "Build the YNAB off-ramp: CSV import + 'switch from YNAB' landing page",
+      "why": "Price is YNAB's most-documented complaint (fees nearly doubled). Free + import = zero-persuasion switching story.",
+      "status": "Next",
+      "source": [1]
+    },
+    {
+      "action": "Partner mode (shared budgets)",
+      "why": "Copilot's documented gap (\"no native couples or household sharing\") and Monarch's main moat. Closes our biggest loss row.",
+      "status": "Next quarter",
+      "source": [2, 3]
+    },
+    {
+      "action": "Keep the coach non-regulated: habits and budgets, never securities advice",
+      "why": "Origin needed SEC registration to cross that line. Staying a coach is a compliance moat and a clearer product.",
+      "status": "Standing rule",
+      "source": [4]
+    }
+  ],
+  "trapQuestions": [
+    "What happens to your budget the week your bank connection silently breaks?",
+    "Which of these apps can your partner open on their Android phone?",
+    "How much has your budgeting app charged you over the last three years?",
+    "Does your AI money coach earn money when you take its cash advance?",
+    "Can it log a street-food lunch in Bangkok, in baht, offline, in ten seconds?"
+  ],
+  "sources": [
+    { "n": 1, "label": "PocketClear — 'YNAB Complaints & Problems' (2026)", "url": "https://pocketclear.app/blog/ynab-complaints-problems.html" },
+    { "n": 2, "label": "PocketClear — 'Copilot Money Review 2026'", "url": "https://pocketclear.app/blog/copilot-money-review-2026.html" },
+    { "n": 3, "label": "FinFlowGuide — 'Copilot vs YNAB vs Monarch Money 2026'", "url": "https://finflowguide.com/copilot-vs-ynab-vs-monarch-money-2026/" },
+    { "n": 4, "label": "Canopy Press — 'Cleo vs Origin: Which AI Budgeter Wins in 2026'", "url": "https://canopy.press/cleo-vs-origin-which-ai-budgeter-wins-in-2026/" },
+    { "n": 5, "label": "FinCompareLab — Cleo review (rating history, advance complaints)", "url": "https://www.fincomparelab.com/reviews/cleo-review/" },
+    { "n": 6, "label": "Trustpilot — Rocket Money (3.2/5 aggregate)", "url": "https://www.trustpilot.com/review/rocketmoney.com" },
+    { "n": 7, "label": "YNAB — official pricing", "url": "https://www.ynab.com/pricing" },
+    { "n": 8, "label": "Monarch Money — official pricing", "url": "https://www.monarchmoney.com/pricing" },
+    { "n": 9, "label": "Copilot Money — official site", "url": "https://copilot.money" },
+    { "n": 10, "label": "Origin — official site", "url": "https://www.useorigin.com" }
+  ],
+  "methodologyNote": "Sources 1–4 were read in full; 5–6 are corroborated by search excerpts and store-rating data. Pricing verified against official pages where public (7–10). Monarch funding figure is as reported in press coverage; treat as approximate. Feature-matrix cells for competitors reflect published reviews and official marketing as of July 2026 — 'partial' marks capabilities that exist but are limited, paywalled, or platform-restricted."
+}
