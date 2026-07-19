@@ -1,0 +1,1 @@
+- [OpenAPI codegen format quirks](openapi-codegen-formats.md) — strip `format: uri`/`email` from openapi.yaml; orval emits zod v4 calls that break the pinned zod v3.
