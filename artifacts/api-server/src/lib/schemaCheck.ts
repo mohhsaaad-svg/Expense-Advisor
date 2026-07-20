@@ -41,4 +41,22 @@ export async function assertSchemaReady(): Promise<void> {
         `starting the server (the file header documents owner resolution and rollout order).`,
     );
   }
+
+  // Salary-cycle columns (payday-to-payday budgeting).
+  const salary = await pool.query<{ column_name: string }>(
+    `SELECT column_name
+       FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'budget'
+        AND column_name IN ('salary_amount', 'salary_day')`,
+  );
+  const salaryPresent = new Set(salary.rows.map((r) => r.column_name));
+  const salaryMissing = ["salary_amount", "salary_day"].filter((c) => !salaryPresent.has(c));
+  if (salaryMissing.length > 0) {
+    throw new Error(
+      `Database schema is missing budget column(s): ${salaryMissing.join(", ")}. ` +
+        `Apply lib/db/migrations/0002_salary_cycle.sql to this database before ` +
+        `starting the server.`,
+    );
+  }
 }

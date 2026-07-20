@@ -38,6 +38,8 @@ const FREQUENCIES = [
   { value: 'daily', label: 'Daily', hint: 'every day' },
   { value: 'weekly', label: 'Weekly', hint: 'same weekday' },
   { value: 'monthly', label: 'Monthly', hint: 'same day each month' },
+  { value: 'quarterly', label: 'Quarterly', hint: 'every 3 months' },
+  { value: 'yearly', label: 'Yearly', hint: 'once a year' },
 ] as const;
 
 type FrequencyValue = (typeof FREQUENCIES)[number]['value'];
@@ -89,7 +91,7 @@ export default function RecurringFormScreen() {
   const frequency: FrequencyValue =
     frequencyDraft ??
     ((existing &&
-    (['daily', 'weekly', 'monthly'] as const).includes(
+    (['daily', 'weekly', 'monthly', 'quarterly', 'yearly'] as const).includes(
       existing.frequency as FrequencyValue,
     )
       ? (existing.frequency as FrequencyValue)
@@ -512,10 +514,12 @@ const styles = StyleSheet.create({
   },
   freqRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   freqChip: {
-    flex: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
     borderWidth: 1.5,
     paddingVertical: 10,
     paddingHorizontal: 10,

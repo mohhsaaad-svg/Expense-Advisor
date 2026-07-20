@@ -10,8 +10,18 @@ export interface Budget {
   id: number;
   /** Daily spending limit in dollars */
   dailyLimit: number;
-  /** Monthly spending limit in dollars */
+  /** Spending ceiling per salary cycle (or calendar month when no salary day is set) */
   monthlyLimit: number;
+  /**
+     * Net salary landing each payday; null when not set
+     * @nullable
+     */
+  salaryAmount: number | null;
+  /**
+     * Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting
+     * @nullable
+     */
+  salaryDay: number | null;
   /** ISO datetime string */
   updatedAt: string;
 }

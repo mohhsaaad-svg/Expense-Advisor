@@ -13,4 +13,6 @@ export const RecurringExpenseUpdateFrequency = {
   daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
 } as const;

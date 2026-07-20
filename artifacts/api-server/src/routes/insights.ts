@@ -14,6 +14,8 @@ import {
   toDateString,
   type Frequency,
 } from "../lib/recurrence";
+import { computeCycle } from "../lib/cycle";
+import { occurrencesBetween } from "../lib/recurrence";
 import { getOrCreatePreferences } from "./preferences";
 import { getOrCreateBudget } from "./budget";
 import { userId } from "../lib/user";
@@ -181,20 +183,32 @@ router.get("/insights/stats", async (req, res): Promise<void> => {
   const dailyLimitCents = toCents(budget.dailyLimit);
   const monthlyLimitCents = toCents(budget.monthlyLimit);
 
-  const [y, m, d] = date.split("-").map((p) => parseInt(p, 10));
-  const monthStart = `${date.slice(0, 7)}-01`;
-  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const daysElapsed = d;
+  // Salary-cycle window: payday -> day before next payday when a salary day
+  // is set; calendar month otherwise.
+  const cycle = computeCycle(budget.salaryDay, date);
+  const daysInCycle = cycle.days;
+  const daysElapsed =
+    Math.round(
+      (new Date(date + "T00:00:00Z").getTime() - new Date(cycle.start + "T00:00:00Z").getTime()) /
+        86_400_000,
+    ) + 1;
+  const daysUntilPayday = cycle.nextPayday
+    ? Math.round(
+        (new Date(cycle.nextPayday + "T00:00:00Z").getTime() -
+          new Date(date + "T00:00:00Z").getTime()) /
+          86_400_000,
+      )
+    : null;
 
-  // Month-to-date is bounded on BOTH ends so future-dated entries never count.
+  // Cycle-to-date is bounded on BOTH ends so future-dated entries never count.
   const monthExpenses = await db
     .select()
     .from(expensesTable)
-    .where(ownedBetween(uid, monthStart, date));
+    .where(ownedBetween(uid, cycle.start, date));
 
   const monthCents = sumCents(monthExpenses.map((e) => e.amount));
   const avgPerDayCents = daysElapsed > 0 ? Math.round(monthCents / daysElapsed) : 0;
-  const projectedCents = daysElapsed > 0 ? Math.round((monthCents / daysElapsed) * daysInMonth) : 0;
+  const projectedCents = daysElapsed > 0 ? Math.round((monthCents / daysElapsed) * daysInCycle) : 0;
   const monthPercentUsed =
     monthlyLimitCents > 0 ? Math.round((monthCents / monthlyLimitCents) * 100) : 0;
 
@@ -234,6 +248,43 @@ router.get("/insights/stats", async (req, res): Promise<void> => {
     recurringMonthlyCents += monthlyEquivalent(r.frequency as Frequency, toCents(r.amount));
   }
 
+  // Committed obligations mapped into this cycle: every occurrence of every
+  // active rule that falls between cycle start and cycle end.
+  let committedTotalCents = 0;
+  let committedRemainingCents = 0;
+  const upcomingObligations: Array<{
+    recurringId: number;
+    description: string;
+    category: string;
+    amount: number;
+    date: string;
+    frequency: string;
+  }> = [];
+  for (const r of activeRules) {
+    const occ = occurrencesBetween(
+      r.frequency as Frequency,
+      r.startDate,
+      addDays(cycle.start, -1),
+      cycle.end,
+    );
+    const cents = toCents(r.amount);
+    for (const day of occ) {
+      committedTotalCents += cents;
+      if (day > date) {
+        committedRemainingCents += cents;
+        upcomingObligations.push({
+          recurringId: r.id,
+          description: r.description,
+          category: r.category,
+          amount: centsToNumber(cents),
+          date: day,
+          frequency: r.frequency,
+        });
+      }
+    }
+  }
+  upcomingObligations.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
   res.json({
     date,
     monthToDate: centsToNumber(monthCents),
@@ -242,7 +293,16 @@ router.get("/insights/stats", async (req, res): Promise<void> => {
     monthPercentUsed,
     avgPerDay: centsToNumber(avgPerDayCents),
     daysElapsed,
-    daysInMonth,
+    daysInMonth: daysInCycle,
+    cycleStart: cycle.start,
+    cycleEnd: cycle.end,
+    cycleAnchored: cycle.anchored,
+    nextPayday: cycle.nextPayday,
+    daysUntilPayday,
+    salaryAmount: budget.salaryAmount === null ? null : parseFloat(budget.salaryAmount),
+    committedTotal: centsToNumber(committedTotalCents),
+    committedRemaining: centsToNumber(committedRemainingCents),
+    upcomingObligations: upcomingObligations.slice(0, 10),
     underBudgetStreak,
     totalExpenseCount,
     activeRecurringCount: activeRules.length,
@@ -277,14 +337,14 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
     .from(expensesTable)
     .where(ownedBetween(uid, weekStart, weekEnd));
 
-  // Month-to-date is bounded on BOTH ends: without the upper bound, a
+  // Cycle-to-date is bounded on BOTH ends: without the upper bound, a
   // future-dated entry (say, rent logged ahead) inflates "spent so far" and
   // fires bogus over-budget alerts.
-  const monthStart = today.slice(0, 7) + "-01";
+  const cycle = computeCycle(budget.salaryDay, today);
   const monthExpenses = await db
     .select()
     .from(expensesTable)
-    .where(ownedBetween(uid, monthStart, today));
+    .where(ownedBetween(uid, cycle.start, today));
 
   const todayCents = sumCents(todayExpenses.map((e) => e.amount));
   const monthCents = sumCents(monthExpenses.map((e) => e.amount));
@@ -323,9 +383,35 @@ router.get("/insights/tips", async (req, res): Promise<void> => {
     alerts.push({
       id: "monthly-warning",
       type: "warning",
-      title: "Monthly budget nearly full",
-      message: `You have used ${Math.round(monthPercent)}% of your monthly budget with ${formatMoney(monthlyLimitCents - monthCents, cur)} remaining.`,
+      title: cycle.anchored ? "Cycle budget nearly full" : "Monthly budget nearly full",
+      message: cycle.anchored
+        ? `You have used ${Math.round(monthPercent)}% of this salary cycle's budget with ${formatMoney(monthlyLimitCents - monthCents, cur)} remaining until payday.`
+        : `You have used ${Math.round(monthPercent)}% of your monthly budget with ${formatMoney(monthlyLimitCents - monthCents, cur)} remaining.`,
     });
+  }
+
+  // Payday-aware pacing: with a salary anchor, warn when spend is outpacing
+  // the days left before the next salary lands.
+  if (cycle.anchored && cycle.nextPayday) {
+    const daysLeft = Math.round(
+      (new Date(cycle.nextPayday + "T00:00:00Z").getTime() -
+        new Date(today + "T00:00:00Z").getTime()) /
+        86_400_000,
+    );
+    const daysGone = cycle.days - daysLeft;
+    if (
+      daysLeft > 0 &&
+      daysGone > 0 &&
+      monthlyLimitCents > 0 &&
+      monthPercent > (daysGone / cycle.days) * 100 + 15
+    ) {
+      alerts.push({
+        id: "payday-pace",
+        type: "warning",
+        title: "Spending ahead of your salary cycle",
+        message: `${daysLeft} day${daysLeft === 1 ? "" : "s"} to payday, but you've already used ${Math.round(monthPercent)}% of this cycle's budget. Slowing down now keeps the last stretch comfortable.`,
+      });
+    }
   }
 
   // Recurring cost awareness

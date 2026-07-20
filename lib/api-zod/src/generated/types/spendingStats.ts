@@ -5,17 +5,52 @@
  * Daily Expense Tracker API
  * OpenAPI spec version: 0.1.0
  */
+import type { Obligation } from './obligation';
 
+/**
+ * Cycle-based counters. When a salary day is set the window runs payday -> day before next payday; otherwise it falls back to the calendar month. `monthToDate`/`projectedMonthEnd`/`daysInMonth` are computed over that window.
+ */
 export interface SpendingStats {
   date: string;
+  /** Spend from cycle start through `date` */
   monthToDate: number;
-  /** Straight-line projection of this month's spend */
+  /** Straight-line projection of this cycle's spend */
   projectedMonthEnd: number;
+  /** Spending ceiling for the cycle */
   monthlyLimit: number;
   monthPercentUsed: number;
   avgPerDay: number;
+  /** Days elapsed in the cycle including `date` */
   daysElapsed: number;
+  /** Total days in the cycle */
   daysInMonth: number;
+  /** First day of the current cycle (YYYY-MM-DD) */
+  cycleStart: string;
+  /** Last day of the current cycle (YYYY-MM-DD) */
+  cycleEnd: string;
+  /** True when anchored to a salary day, false for calendar-month fallback */
+  cycleAnchored: boolean;
+  /**
+     * Next payday (YYYY-MM-DD) when anchored, null otherwise
+     * @nullable
+     */
+  nextPayday: string | null;
+  /**
+     * Days from `date` until the next payday when anchored, null otherwise
+     * @nullable
+     */
+  daysUntilPayday: number | null;
+  /**
+     * Net salary per payday when set, null otherwise
+     * @nullable
+     */
+  salaryAmount: number | null;
+  /** Total committed obligations (recurring rules) falling inside this cycle */
+  committedTotal: number;
+  /** Committed obligations still due after `date` in this cycle */
+  committedRemaining: number;
+  /** Obligations due after `date` and before the cycle ends, soonest first */
+  upcomingObligations: Obligation[];
   /** Consecutive days (ending today) at or under the daily limit */
   underBudgetStreak: number;
   totalExpenseCount: number;

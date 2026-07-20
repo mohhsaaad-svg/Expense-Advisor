@@ -5,5 +5,6 @@
 - [expo-router Link asChild on web](expo-router-link-aschild-web.md) — Link asChild can drop a function-style Pressable's background on Expo web; use plain Pressable + router.navigate() instead.
 - [Monorepo type visibility](workspace-typecheck.md) — after editing lib/* source, run root `pnpm run typecheck` (tsc --build); package-local tsc resolves stale composite declarations.
 - [API test recipe](api-testing-recipe.md) — vitest+supertest vs real dev DB: inline @workspace deps, NODE_ENV=test skips limiters/pretty-logger, mint sessions in DB + Bearer sid.
+- [Cycle-based stats contract](cycle-based-stats-contract.md) — SpendingStats "month" fields now mean salary-cycle when `cycleAnchored`; check it before writing "month" in UI copy.
 - [Slides QA floor vs template chrome](slides-qa-vs-template.md) — hold deck content to ≥2vw body / ≥1.5vw labels; keep skill-template furniture at its shipped sizes.
 - [gitPush upstream workaround](github-push-upstream.md) — gitPush callback refuses when main tracks a subrepl remote (or has no upstream); re-point upstream to origin/main, push, restore.

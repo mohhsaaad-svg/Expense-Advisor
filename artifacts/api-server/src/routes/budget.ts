@@ -37,15 +37,21 @@ export async function getOrCreateBudget(uid: string) {
   return winner;
 }
 
-// GET /budget
-router.get("/budget", async (req, res): Promise<void> => {
-  const budget = await getOrCreateBudget(userId(req));
-  res.json({
+function serialize(budget: Awaited<ReturnType<typeof getOrCreateBudget>>) {
+  return {
     id: budget.id,
     dailyLimit: parseFloat(budget.dailyLimit),
     monthlyLimit: parseFloat(budget.monthlyLimit),
+    salaryAmount: budget.salaryAmount === null ? null : parseFloat(budget.salaryAmount),
+    salaryDay: budget.salaryDay,
     updatedAt: budget.updatedAt.toISOString(),
-  });
+  };
+}
+
+// GET /budget
+router.get("/budget", async (req, res): Promise<void> => {
+  const budget = await getOrCreateBudget(userId(req));
+  res.json(serialize(budget));
 });
 
 // PUT /budget
@@ -64,6 +70,11 @@ router.put("/budget", async (req, res): Promise<void> => {
     .set({
       dailyLimit: body.data.dailyLimit.toString(),
       monthlyLimit: body.data.monthlyLimit.toString(),
+      // Only touch salary fields when the client sends them (null clears).
+      ...(body.data.salaryAmount !== undefined && {
+        salaryAmount: body.data.salaryAmount === null ? null : body.data.salaryAmount.toString(),
+      }),
+      ...(body.data.salaryDay !== undefined && { salaryDay: body.data.salaryDay }),
       updatedAt: new Date(),
     })
     .where(and(eq(budgetTable.id, existing.id), eq(budgetTable.userId, uid)))
@@ -74,12 +85,7 @@ router.put("/budget", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: updated.id,
-    dailyLimit: parseFloat(updated.dailyLimit),
-    monthlyLimit: parseFloat(updated.monthlyLimit),
-    updatedAt: updated.updatedAt.toISOString(),
-  });
+  res.json(serialize(updated));
 });
 
 export default router;

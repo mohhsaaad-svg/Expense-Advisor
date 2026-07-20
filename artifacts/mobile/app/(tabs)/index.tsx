@@ -207,12 +207,25 @@ export default function TodayScreen() {
         ) : null}
       </View>
 
-      {/* Month counters */}
+      {/* Cycle counters */}
       {month ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            This month
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              {month.cycleAnchored ? 'This salary cycle' : 'This month'}
+            </Text>
+            {month.cycleAnchored && month.daysUntilPayday !== null ? (
+              <View
+                style={[styles.paydayPill, { backgroundColor: colors.accent }]}
+                testID="payday-pill"
+              >
+                <Ionicons name="cash-outline" size={12} color={colors.primary} />
+                <Text style={[styles.paydayText, { color: colors.accentForeground }]}>
+                  {month.daysUntilPayday} day{month.daysUntilPayday === 1 ? '' : 's'} to payday
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <View
             style={[
               styles.card,
@@ -285,7 +298,7 @@ export default function TodayScreen() {
                   testID="stat-avg-day"
                 />
                 <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-                  over {month.daysElapsed} day{month.daysElapsed === 1 ? '' : 's'}
+                  day {month.daysElapsed} of {month.daysInMonth}
                 </Text>
               </View>
               <View
@@ -315,6 +328,21 @@ export default function TodayScreen() {
                 </Text>
               </View>
             </View>
+            {month.committedRemaining > 0 ? (
+              <View
+                style={[styles.recurringHint, { borderTopColor: colors.border }]}
+                testID="committed-remaining"
+              >
+                <Ionicons name="lock-closed-outline" size={14} color={colors.primary} />
+                <Text style={[styles.recurringHintText, { color: colors.mutedForeground }]}>
+                  {format(month.committedRemaining)} still committed before{' '}
+                  {month.cycleAnchored ? 'payday' : 'month end'}
+                  {month.upcomingObligations.length > 0
+                    ? ` — next: ${month.upcomingObligations[0].description}`
+                    : ''}
+                </Text>
+              </View>
+            ) : null}
             {month.activeRecurringCount > 0 ? (
               <Pressable
                 onPress={() => router.push('/budget')}
@@ -587,6 +615,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  paydayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  paydayText: {
+    fontSize: 12,
     fontFamily: 'Outfit_600SemiBold',
   },
   card: {

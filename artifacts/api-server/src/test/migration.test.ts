@@ -153,3 +153,41 @@ describe("0001_user_isolation migration", () => {
     });
   });
 });
+
+const SALARY_MIGRATION = fs.readFileSync(
+  fileURLToPath(new URL("../../../../lib/db/migrations/0002_salary_cycle.sql", import.meta.url)),
+  "utf8",
+);
+
+describe("0002_salary_cycle migration", () => {
+  it("adds nullable salary columns without touching existing rows, and is re-runnable", async () => {
+    await withScratchSchema(async (client, schema) => {
+      await client.query(`INSERT INTO users (id) VALUES ('only-user')`);
+      await client.query(`INSERT INTO budget (updated_at) VALUES (now())`);
+      await client.query(MIGRATION); // 0001 first, mirroring the rollout order
+
+      await client.query(SALARY_MIGRATION);
+      await client.query(SALARY_MIGRATION); // idempotent
+
+      const cols = await client.query(
+        `SELECT column_name, is_nullable FROM information_schema.columns
+          WHERE table_schema = $1 AND table_name = 'budget'
+            AND column_name IN ('salary_amount', 'salary_day')`,
+        [schema],
+      );
+      expect(new Map(cols.rows.map((r: { column_name: string; is_nullable: string }) => [r.column_name, r.is_nullable])))
+        .toEqual(new Map([["salary_amount", "YES"], ["salary_day", "YES"]]));
+
+      // Existing row survived with NULL salary fields (calendar fallback).
+      const row = await client.query(
+        `SELECT count(*)::int AS n FROM budget WHERE salary_amount IS NULL AND salary_day IS NULL`,
+      );
+      expect(row.rows[0].n).toBe(1);
+
+      // Range check rejects impossible paydays.
+      await expect(
+        client.query(`UPDATE budget SET salary_day = 42`),
+      ).rejects.toThrow(/budget_salary_day_range/);
+    });
+  });
+});

@@ -270,18 +270,34 @@ export const GetSpendingStatsQueryParams = zod.object({
 
 export const GetSpendingStatsResponse = zod.object({
   "date": zod.string(),
-  "monthToDate": zod.number(),
-  "projectedMonthEnd": zod.number().describe('Straight-line projection of this month\'s spend'),
-  "monthlyLimit": zod.number(),
+  "monthToDate": zod.number().describe('Spend from cycle start through `date`'),
+  "projectedMonthEnd": zod.number().describe('Straight-line projection of this cycle\'s spend'),
+  "monthlyLimit": zod.number().describe('Spending ceiling for the cycle'),
   "monthPercentUsed": zod.number(),
   "avgPerDay": zod.number(),
-  "daysElapsed": zod.number(),
-  "daysInMonth": zod.number(),
+  "daysElapsed": zod.number().describe('Days elapsed in the cycle including `date`'),
+  "daysInMonth": zod.number().describe('Total days in the cycle'),
+  "cycleStart": zod.string().describe('First day of the current cycle (YYYY-MM-DD)'),
+  "cycleEnd": zod.string().describe('Last day of the current cycle (YYYY-MM-DD)'),
+  "cycleAnchored": zod.boolean().describe('True when anchored to a salary day, false for calendar-month fallback'),
+  "nextPayday": zod.string().nullable().describe('Next payday (YYYY-MM-DD) when anchored, null otherwise'),
+  "daysUntilPayday": zod.number().nullable().describe('Days from `date` until the next payday when anchored, null otherwise'),
+  "salaryAmount": zod.number().nullable().describe('Net salary per payday when set, null otherwise'),
+  "committedTotal": zod.number().describe('Total committed obligations (recurring rules) falling inside this cycle'),
+  "committedRemaining": zod.number().describe('Committed obligations still due after `date` in this cycle'),
+  "upcomingObligations": zod.array(zod.object({
+  "recurringId": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "amount": zod.number(),
+  "date": zod.string().describe('Occurrence date within the cycle (YYYY-MM-DD)'),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
+}).describe('A committed recurring payment mapped into the current salary cycle')).describe('Obligations due after `date` and before the cycle ends, soonest first'),
   "underBudgetStreak": zod.number().describe('Consecutive days (ending today) at or under the daily limit'),
   "totalExpenseCount": zod.number(),
   "activeRecurringCount": zod.number(),
   "recurringMonthlyTotal": zod.number().describe('Approximate monthly cost of all active recurring rules')
-})
+}).describe('Cycle-based counters. When a salary day is set the window runs payday -> day before next payday; otherwise it falls back to the calendar month. `monthToDate`\/`projectedMonthEnd`\/`daysInMonth` are computed over that window.\n')
 
 
 /**
@@ -292,7 +308,7 @@ export const ListRecurringExpensesResponseItem = zod.object({
   "description": zod.string(),
   "amount": zod.number(),
   "category": zod.string(),
-  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
   "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
   "active": zod.boolean(),
   "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
@@ -315,7 +331,7 @@ export const CreateRecurringExpenseBody = zod.object({
   "description": zod.string().min(1),
   "amount": zod.number().min(createRecurringExpenseBodyAmountMin),
   "category": zod.string().min(1),
-  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
   "startDate": zod.string().describe('ISO date string (YYYY-MM-DD)'),
   "active": zod.boolean().optional()
 })
@@ -325,7 +341,7 @@ export const CreateRecurringExpenseResponse = zod.object({
   "description": zod.string(),
   "amount": zod.number(),
   "category": zod.string(),
-  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
   "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
   "active": zod.boolean(),
   "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
@@ -350,7 +366,7 @@ export const UpdateRecurringExpenseBody = zod.object({
   "description": zod.string().min(1).optional(),
   "amount": zod.number().min(updateRecurringExpenseBodyAmountMin).optional(),
   "category": zod.string().min(1).optional(),
-  "frequency": zod.enum(['daily', 'weekly', 'monthly']).optional(),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']).optional(),
   "startDate": zod.string().optional(),
   "active": zod.boolean().optional()
 })
@@ -360,7 +376,7 @@ export const UpdateRecurringExpenseResponse = zod.object({
   "description": zod.string(),
   "amount": zod.number(),
   "category": zod.string(),
-  "frequency": zod.enum(['daily', 'weekly', 'monthly']),
+  "frequency": zod.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
   "startDate": zod.string().describe('ISO date string (YYYY-MM-DD); anchors the repeat schedule'),
   "active": zod.boolean(),
   "lastMaterializedDate": zod.string().nullable().describe('Occurrences up to this date have been auto-logged'),
@@ -441,7 +457,9 @@ export const GetSpendingTipsResponse = zod.object({
 export const GetBudgetResponse = zod.object({
   "id": zod.number(),
   "dailyLimit": zod.number().describe('Daily spending limit in dollars'),
-  "monthlyLimit": zod.number().describe('Monthly spending limit in dollars'),
+  "monthlyLimit": zod.number().describe('Spending ceiling per salary cycle (or calendar month when no salary day is set)'),
+  "salaryAmount": zod.number().nullable().describe('Net salary landing each payday; null when not set'),
+  "salaryDay": zod.number().nullable().describe('Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })
 
@@ -452,16 +470,23 @@ export const GetBudgetResponse = zod.object({
 
 
 
+export const updateBudgetBodySalaryDayMax = 31;
+
+
 
 export const UpdateBudgetBody = zod.object({
   "dailyLimit": zod.number().min(1),
-  "monthlyLimit": zod.number().min(1)
+  "monthlyLimit": zod.number().min(1),
+  "salaryAmount": zod.number().min(1).nullish().describe('Net salary per payday; null clears it'),
+  "salaryDay": zod.number().min(1).max(updateBudgetBodySalaryDayMax).nullish().describe('Day of month the salary lands; null switches back to calendar-month budgeting')
 })
 
 export const UpdateBudgetResponse = zod.object({
   "id": zod.number(),
   "dailyLimit": zod.number().describe('Daily spending limit in dollars'),
-  "monthlyLimit": zod.number().describe('Monthly spending limit in dollars'),
+  "monthlyLimit": zod.number().describe('Spending ceiling per salary cycle (or calendar month when no salary day is set)'),
+  "salaryAmount": zod.number().nullable().describe('Net salary landing each payday; null when not set'),
+  "salaryDay": zod.number().nullable().describe('Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })
 

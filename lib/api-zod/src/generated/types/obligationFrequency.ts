@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type RecurringExpenseFrequency = typeof RecurringExpenseFrequency[keyof typeof RecurringExpenseFrequency];
+export type ObligationFrequency = typeof ObligationFrequency[keyof typeof ObligationFrequency];
 
 
-export const RecurringExpenseFrequency = {
+export const ObligationFrequency = {
   daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',

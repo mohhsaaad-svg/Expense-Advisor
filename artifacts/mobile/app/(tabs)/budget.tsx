@@ -47,6 +47,8 @@ const FREQ_LABEL: Record<string, string> = {
   daily: 'Daily',
   weekly: 'Weekly',
   monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
 };
 
 export default function BudgetScreen() {
@@ -70,6 +72,8 @@ export default function BudgetScreen() {
   // Controlled-with-fallback: null means "not touched yet, show server value"
   const [dailyDraft, setDailyDraft] = useState<string | null>(null);
   const [monthlyDraft, setMonthlyDraft] = useState<string | null>(null);
+  const [salaryAmountDraft, setSalaryAmountDraft] = useState<string | null>(null);
+  const [salaryDayDraft, setSalaryDayDraft] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const [currencyDraft, setCurrencyDraft] = useState<CurrencyOption | null>(null);
@@ -81,17 +85,45 @@ export default function BudgetScreen() {
   const monthlyValue =
     monthlyDraft ?? (budget.data ? String(budget.data.monthlyLimit) : '');
 
+  const salaryAmountValue =
+    salaryAmountDraft ??
+    (budget.data && budget.data.salaryAmount !== null
+      ? String(budget.data.salaryAmount)
+      : '');
+  const salaryDayValue =
+    salaryDayDraft ??
+    (budget.data && budget.data.salaryDay !== null
+      ? String(budget.data.salaryDay)
+      : '');
+
   const parsedDaily = parseFloat(dailyValue.replace(',', '.'));
   const parsedMonthly = parseFloat(monthlyValue.replace(',', '.'));
+  // Empty salary fields mean "not set" (calendar-month budgeting).
+  const parsedSalaryAmount =
+    salaryAmountValue.trim() === ''
+      ? null
+      : parseFloat(salaryAmountValue.replace(',', '.'));
+  const parsedSalaryDay =
+    salaryDayValue.trim() === '' ? null : parseInt(salaryDayValue, 10);
+  const salaryValid =
+    (parsedSalaryAmount === null ||
+      (!Number.isNaN(parsedSalaryAmount) && parsedSalaryAmount >= 1)) &&
+    (parsedSalaryDay === null ||
+      (!Number.isNaN(parsedSalaryDay) &&
+        parsedSalaryDay >= 1 &&
+        parsedSalaryDay <= 31));
   const isValid =
     !Number.isNaN(parsedDaily) &&
     parsedDaily >= 1 &&
     !Number.isNaN(parsedMonthly) &&
-    parsedMonthly >= 1;
+    parsedMonthly >= 1 &&
+    salaryValid;
   const isDirty =
     budget.data !== undefined &&
     (parsedDaily !== budget.data.dailyLimit ||
-      parsedMonthly !== budget.data.monthlyLimit);
+      parsedMonthly !== budget.data.monthlyLimit ||
+      parsedSalaryAmount !== budget.data.salaryAmount ||
+      parsedSalaryDay !== budget.data.salaryDay);
 
   const currencyValue: CurrencyOption =
     currencyDraft ?? ((prefs.data?.currency as CurrencyOption | undefined) ?? 'USD');
@@ -104,7 +136,14 @@ export default function BudgetScreen() {
   const handleSave = () => {
     if (!isValid) return;
     updateBudget.mutate(
-      { data: { dailyLimit: parsedDaily, monthlyLimit: parsedMonthly } },
+      {
+        data: {
+          dailyLimit: parsedDaily,
+          monthlyLimit: parsedMonthly,
+          salaryAmount: parsedSalaryAmount,
+          salaryDay: parsedSalaryDay,
+        },
+      },
       {
         onSuccess: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -120,6 +159,8 @@ export default function BudgetScreen() {
           });
           setDailyDraft(null);
           setMonthlyDraft(null);
+          setSalaryAmountDraft(null);
+          setSalaryDayDraft(null);
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
         },
@@ -181,7 +222,11 @@ export default function BudgetScreen() {
           ? r.amount * 30
           : r.frequency === 'weekly'
             ? r.amount * 4
-            : r.amount),
+            : r.frequency === 'quarterly'
+              ? r.amount / 3
+              : r.frequency === 'yearly'
+                ? r.amount / 12
+                : r.amount),
       0,
     );
 
@@ -306,6 +351,63 @@ export default function BudgetScreen() {
                 <Text style={[styles.per, { color: colors.mutedForeground }]}>
                   / month
                 </Text>
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                Salary — payday to payday
+              </Text>
+              <Text style={[styles.cardSub, { color: colors.mutedForeground, marginBottom: 0 }]}>
+                Set the day your salary lands and Ember budgets from payday to
+                payday instead of the calendar month.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    {
+                      flex: 1.4,
+                      borderColor: colors.input,
+                      backgroundColor: colors.background,
+                      borderRadius: colorTokens.radius - 4,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.currency, { color: colors.mutedForeground }]}>
+                    {currencySymbol(currencyValue)}
+                  </Text>
+                  <TextInput
+                    value={salaryAmountValue}
+                    onChangeText={setSalaryAmountDraft}
+                    keyboardType="decimal-pad"
+                    style={[styles.input, { color: colors.foreground }]}
+                    placeholder="Salary"
+                    placeholderTextColor={colors.mutedForeground}
+                    testID="input-salary-amount"
+                  />
+                </View>
+                <View
+                  style={[
+                    styles.inputWrap,
+                    {
+                      flex: 1,
+                      borderColor: colors.input,
+                      backgroundColor: colors.background,
+                      borderRadius: colorTokens.radius - 4,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={salaryDayValue}
+                    onChangeText={setSalaryDayDraft}
+                    keyboardType="number-pad"
+                    style={[styles.input, { color: colors.foreground }]}
+                    placeholder="Day (1–31)"
+                    placeholderTextColor={colors.mutedForeground}
+                    testID="input-salary-day"
+                  />
+                </View>
               </View>
             </View>
 

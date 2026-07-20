@@ -120,8 +120,18 @@ export interface Budget {
   id: number;
   /** Daily spending limit in dollars */
   dailyLimit: number;
-  /** Monthly spending limit in dollars */
+  /** Spending ceiling per salary cycle (or calendar month when no salary day is set) */
   monthlyLimit: number;
+  /**
+     * Net salary landing each payday; null when not set
+     * @nullable
+     */
+  salaryAmount: number | null;
+  /**
+     * Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting
+     * @nullable
+     */
+  salaryDay: number | null;
   /** ISO datetime string */
   updatedAt: string;
 }
@@ -131,6 +141,19 @@ export interface BudgetInput {
   dailyLimit: number;
   /** @minimum 1 */
   monthlyLimit: number;
+  /**
+     * Net salary per payday; null clears it
+     * @minimum 1
+     * @nullable
+     */
+  salaryAmount?: number | null;
+  /**
+     * Day of month the salary lands; null switches back to calendar-month budgeting
+     * @minimum 1
+     * @maximum 31
+     * @nullable
+     */
+  salaryDay?: number | null;
 }
 
 export interface CategoryBreakdown {
@@ -184,6 +207,8 @@ export const RecurringExpenseFrequency = {
   daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
 } as const;
 
 export interface RecurringExpense {
@@ -211,6 +236,8 @@ export const RecurringExpenseInputFrequency = {
   daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
 } as const;
 
 export interface RecurringExpenseInput {
@@ -233,6 +260,8 @@ export const RecurringExpenseUpdateFrequency = {
   daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
 } as const;
 
 export interface RecurringExpenseUpdate {
@@ -291,16 +320,74 @@ export interface PreferencesInput {
   alertThreshold: number;
 }
 
+export type ObligationFrequency = typeof ObligationFrequency[keyof typeof ObligationFrequency];
+
+
+export const ObligationFrequency = {
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  yearly: 'yearly',
+} as const;
+
+/**
+ * A committed recurring payment mapped into the current salary cycle
+ */
+export interface Obligation {
+  recurringId: number;
+  description: string;
+  category: string;
+  amount: number;
+  /** Occurrence date within the cycle (YYYY-MM-DD) */
+  date: string;
+  frequency: ObligationFrequency;
+}
+
+/**
+ * Cycle-based counters. When a salary day is set the window runs payday -> day before next payday; otherwise it falls back to the calendar month. `monthToDate`/`projectedMonthEnd`/`daysInMonth` are computed over that window.
+ */
 export interface SpendingStats {
   date: string;
+  /** Spend from cycle start through `date` */
   monthToDate: number;
-  /** Straight-line projection of this month's spend */
+  /** Straight-line projection of this cycle's spend */
   projectedMonthEnd: number;
+  /** Spending ceiling for the cycle */
   monthlyLimit: number;
   monthPercentUsed: number;
   avgPerDay: number;
+  /** Days elapsed in the cycle including `date` */
   daysElapsed: number;
+  /** Total days in the cycle */
   daysInMonth: number;
+  /** First day of the current cycle (YYYY-MM-DD) */
+  cycleStart: string;
+  /** Last day of the current cycle (YYYY-MM-DD) */
+  cycleEnd: string;
+  /** True when anchored to a salary day, false for calendar-month fallback */
+  cycleAnchored: boolean;
+  /**
+     * Next payday (YYYY-MM-DD) when anchored, null otherwise
+     * @nullable
+     */
+  nextPayday: string | null;
+  /**
+     * Days from `date` until the next payday when anchored, null otherwise
+     * @nullable
+     */
+  daysUntilPayday: number | null;
+  /**
+     * Net salary per payday when set, null otherwise
+     * @nullable
+     */
+  salaryAmount: number | null;
+  /** Total committed obligations (recurring rules) falling inside this cycle */
+  committedTotal: number;
+  /** Committed obligations still due after `date` in this cycle */
+  committedRemaining: number;
+  /** Obligations due after `date` and before the cycle ends, soonest first */
+  upcomingObligations: Obligation[];
   /** Consecutive days (ending today) at or under the daily limit */
   underBudgetStreak: number;
   totalExpenseCount: number;

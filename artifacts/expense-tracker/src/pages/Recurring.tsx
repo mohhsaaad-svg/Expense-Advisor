@@ -59,6 +59,8 @@ const FREQUENCY_SUFFIX: Record<string, string> = {
   daily: "/ day",
   weekly: "/ week",
   monthly: "/ month",
+  quarterly: "/ quarter",
+  yearly: "/ year",
 };
 
 type RecurringRule = {
@@ -77,7 +79,7 @@ const formSchema = z.object({
   description: z.string().min(1, "Description is required"),
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
   category: z.string().min(1, "Category is required"),
-  frequency: z.enum(["daily", "weekly", "monthly"]),
+  frequency: z.enum(["daily", "weekly", "monthly", "quarterly", "yearly"]),
   startDate: z.string().min(1, "Start date is required"),
 });
 
@@ -123,9 +125,9 @@ export default function Recurring() {
               description: editing.description,
               amount: editing.amount,
               category: editing.category,
-              frequency: (["daily", "weekly", "monthly"].includes(editing.frequency)
+              frequency: (["daily", "weekly", "monthly", "quarterly", "yearly"].includes(editing.frequency)
                 ? editing.frequency
-                : "monthly") as "daily" | "weekly" | "monthly",
+                : "monthly") as "daily" | "weekly" | "monthly" | "quarterly" | "yearly",
               startDate: editing.startDate,
             }
           : {
@@ -346,7 +348,7 @@ export default function Recurring() {
               </div>
               <h3 className="font-serif font-bold text-2xl text-foreground">How rituals work</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Each ritual is logged into your logbook automatically on its schedule — daily, weekly on the start date's weekday, or monthly on its day of the month.
+                Each ritual is logged into your logbook automatically on its schedule — daily, weekly on the start date's weekday, monthly, quarterly (great for rent paid four times a year) or yearly on its day of the month.
               </p>
               <p className="text-base text-muted-foreground leading-relaxed">
                 Pause one and Ember stops logging it; resume and it picks up from today. Deleting a ritual never touches what's already in the logbook.
@@ -413,6 +415,8 @@ export default function Recurring() {
                             <SelectItem value="daily" className="rounded-md cursor-pointer">Daily</SelectItem>
                             <SelectItem value="weekly" className="rounded-md cursor-pointer">Weekly</SelectItem>
                             <SelectItem value="monthly" className="rounded-md cursor-pointer">Monthly</SelectItem>
+                            <SelectItem value="quarterly" className="rounded-md cursor-pointer">Quarterly</SelectItem>
+                            <SelectItem value="yearly" className="rounded-md cursor-pointer">Yearly</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

@@ -1161,7 +1161,7 @@ components:
 
     Budget:
       type: object
-      required: [id, dailyLimit, monthlyLimit, updatedAt]
+      required: [id, dailyLimit, monthlyLimit, salaryAmount, salaryDay, updatedAt]
       properties:
         id:
           type: integer
@@ -1170,7 +1170,13 @@ components:
           description: Daily spending limit in dollars
         monthlyLimit:
           type: number
-          description: Monthly spending limit in dollars
+          description: Spending ceiling per salary cycle (or calendar month when no salary day is set)
+        salaryAmount:
+          type: [number, 'null']
+          description: Net salary landing each payday; null when not set
+        salaryDay:
+          type: [integer, 'null']
+          description: Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting
         updatedAt:
           type: string
           description: ISO datetime string
@@ -1185,6 +1191,15 @@ components:
         monthlyLimit:
           type: number
           minimum: 1
+        salaryAmount:
+          type: [number, 'null']
+          minimum: 1
+          description: Net salary per payday; null clears it
+        salaryDay:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 31
+          description: Day of month the salary lands; null switches back to calendar-month budgeting
 
     CategoryBreakdown:
       type: object
@@ -1287,7 +1302,7 @@ components:
           type: string
         frequency:
           type: string
-          enum: [daily, weekly, monthly]
+          enum: [daily, weekly, monthly, quarterly, yearly]
         startDate:
           type: string
           description: ISO date string (YYYY-MM-DD); anchors the repeat schedule
@@ -1315,7 +1330,7 @@ components:
           minLength: 1
         frequency:
           type: string
-          enum: [daily, weekly, monthly]
+          enum: [daily, weekly, monthly, quarterly, yearly]
         startDate:
           type: string
           description: ISO date string (YYYY-MM-DD)
@@ -1336,7 +1351,7 @@ components:
           minLength: 1
         frequency:
           type: string
-          enum: [daily, weekly, monthly]
+          enum: [daily, weekly, monthly, quarterly, yearly]
         startDate:
           type: string
         active:
@@ -1370,8 +1385,33 @@ components:
           minimum: 50
           maximum: 100
 
+    Obligation:
+      type: object
+      required: [recurringId, description, category, amount, date, frequency]
+      description: A committed recurring payment mapped into the current salary cycle
+      properties:
+        recurringId:
+          type: integer
+        description:
+          type: string
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+          description: Occurrence date within the cycle (YYYY-MM-DD)
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly, quarterly, yearly]
+
     SpendingStats:
       type: object
+      description: >
+        Cycle-based counters. When a salary day is set the window runs
+        payday -> day before next payday; otherwise it falls back to the
+        calendar month. `monthToDate`/`projectedMonthEnd`/`daysInMonth` are
+        computed over that window.
       required:
         [
           date,
@@ -1382,6 +1422,15 @@ components:
           avgPerDay,
           daysElapsed,
           daysInMonth,
+          cycleStart,
+          cycleEnd,
+          cycleAnchored,
+          nextPayday,
+          daysUntilPayday,
+          salaryAmount,
+          committedTotal,
+          committedRemaining,
+          upcomingObligations,
           underBudgetStreak,
           totalExpenseCount,
           activeRecurringCount,
@@ -1392,19 +1441,52 @@ components:
           type: string
         monthToDate:
           type: number
+          description: Spend from cycle start through `date`
         projectedMonthEnd:
           type: number
-          description: Straight-line projection of this month's spend
+          description: Straight-line projection of this cycle's spend
         monthlyLimit:
           type: number
+          description: Spending ceiling for the cycle
         monthPercentUsed:
           type: number
         avgPerDay:
           type: number
         daysElapsed:
           type: integer
+          description: Days elapsed in the cycle including `date`
         daysInMonth:
           type: integer
+          description: Total days in the cycle
+        cycleStart:
+          type: string
+          description: First day of the current cycle (YYYY-MM-DD)
+        cycleEnd:
+          type: string
+          description: Last day of the current cycle (YYYY-MM-DD)
+        cycleAnchored:
+          type: boolean
+          description: True when anchored to a salary day, false for calendar-month fallback
+        nextPayday:
+          type: [string, 'null']
+          description: Next payday (YYYY-MM-DD) when anchored, null otherwise
+        daysUntilPayday:
+          type: [integer, 'null']
+          description: Days from `date` until the next payday when anchored, null otherwise
+        salaryAmount:
+          type: [number, 'null']
+          description: Net salary per payday when set, null otherwise
+        committedTotal:
+          type: number
+          description: Total committed obligations (recurring rules) falling inside this cycle
+        committedRemaining:
+          type: number
+          description: Committed obligations still due after `date` in this cycle
+        upcomingObligations:
+          type: array
+          description: Obligations due after `date` and before the cycle ends, soonest first
+          items:
+            $ref: "#/components/schemas/Obligation"
         underBudgetStreak:
           type: integer
           description: Consecutive days (ending today) at or under the daily limit

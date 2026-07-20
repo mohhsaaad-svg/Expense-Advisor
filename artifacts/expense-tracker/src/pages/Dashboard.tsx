@@ -1,9 +1,16 @@
-import { useGetDailySummary, getGetDailySummaryQueryKey, useGetSpendingTips, getGetSpendingTipsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetDailySummary,
+  getGetDailySummaryQueryKey,
+  useGetSpendingTips,
+  getGetSpendingTipsQueryKey,
+  useGetSpendingStats,
+  getGetSpendingStatsQueryKey,
+} from "@workspace/api-client-react";
 import { localDateKey } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SummarySkeleton } from "@/components/Skeletons";
-import { Flame, Lightbulb, TrendingDown, ShieldAlert } from "lucide-react";
+import { Flame, Lightbulb, TrendingDown, ShieldAlert, CalendarClock } from "lucide-react";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { StatCards } from "@/components/StatCards";
 import { CountUp } from "@/components/CountUp";
@@ -27,6 +34,16 @@ export default function Dashboard() {
     {
       query: {
         queryKey: getGetSpendingTipsQueryKey({ date: todayKey }),
+        refetchInterval: 60_000,
+      },
+    }
+  );
+
+  const { data: stats } = useGetSpendingStats(
+    { date: todayKey },
+    {
+      query: {
+        queryKey: getGetSpendingStatsQueryKey({ date: todayKey }),
         refetchInterval: 60_000,
       },
     }
@@ -73,6 +90,75 @@ export default function Dashboard() {
       </div>
 
       <StatCards />
+
+      {stats && (
+        <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative" data-testid="cycle-card">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-bl-full pointer-events-none" />
+          <CardContent className="p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <CalendarClock className="w-5 h-5 text-primary" />
+              <span className="text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">
+                {stats.cycleAnchored ? "This salary cycle" : "This month"}
+              </span>
+              {stats.cycleAnchored && stats.daysUntilPayday !== null && (
+                <span className="ml-auto text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">
+                  {stats.daysUntilPayday} day{stats.daysUntilPayday === 1 ? "" : "s"} to payday
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Spent so far</div>
+                <div className="font-serif text-2xl font-bold tracking-tight text-foreground">{format(stats.monthToDate)}</div>
+                <div className={cn("text-xs mt-1 font-medium", stats.monthPercentUsed >= 90 ? "text-destructive" : "text-muted-foreground")}>
+                  {stats.monthPercentUsed}% of {format(stats.monthlyLimit)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Projected</div>
+                <div className={cn("font-serif text-2xl font-bold tracking-tight", stats.projectedMonthEnd > stats.monthlyLimit ? "text-destructive" : "text-foreground")}>
+                  {format(stats.projectedMonthEnd)}
+                </div>
+                <div className="text-xs mt-1 font-medium text-muted-foreground">
+                  by {stats.cycleAnchored ? "payday" : "month end"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Still committed</div>
+                <div className="font-serif text-2xl font-bold tracking-tight text-foreground">{format(stats.committedRemaining)}</div>
+                <div className="text-xs mt-1 font-medium text-muted-foreground">
+                  of {format(stats.committedTotal)} obligations
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
+                  {stats.cycleAnchored ? "Salary" : "Days elapsed"}
+                </div>
+                <div className="font-serif text-2xl font-bold tracking-tight text-foreground">
+                  {stats.cycleAnchored && stats.salaryAmount !== null
+                    ? format(stats.salaryAmount)
+                    : `${stats.daysElapsed} / ${stats.daysInMonth}`}
+                </div>
+                <div className="text-xs mt-1 font-medium text-muted-foreground">
+                  {stats.cycleAnchored ? `day ${stats.daysElapsed} of ${stats.daysInMonth}` : "of this window"}
+                </div>
+              </div>
+            </div>
+            {stats.upcomingObligations.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-border/50">
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">Due before {stats.cycleAnchored ? "payday" : "month end"}</div>
+                <div className="flex flex-wrap gap-2">
+                  {stats.upcomingObligations.slice(0, 4).map((o) => (
+                    <span key={`${o.recurringId}-${o.date}`} className="text-xs font-medium bg-secondary text-secondary-foreground px-3 py-1.5 rounded-full">
+                      {o.description} · {format(o.amount)} · {o.date.slice(5)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-8">

@@ -13,7 +13,7 @@ export const recurringExpensesTable = pgTable(
     description: text("description").notNull(),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     category: text("category").notNull(),
-    // daily | weekly | monthly
+    // daily | weekly | monthly | quarterly | yearly
     frequency: text("frequency").notNull(),
     // Anchor date: first occurrence; weekly repeats on this weekday, monthly on this day-of-month (clamped)
     startDate: date("start_date").notNull(),

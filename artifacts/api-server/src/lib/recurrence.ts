@@ -1,7 +1,7 @@
 import { and, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { db, expensesTable, recurringExpensesTable } from "@workspace/db";
 
-export type Frequency = "daily" | "weekly" | "monthly";
+export type Frequency = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
 export function toDateString(d: Date): string {
   return d.toISOString().split("T")[0];
@@ -51,8 +51,9 @@ export function occurrencesBetween(
     return out;
   }
 
+  const monthsPerStep = frequency === "quarterly" ? 3 : frequency === "yearly" ? 12 : 1;
   const step = (k: number): string =>
-    frequency === "weekly" ? addDays(startDate, 7 * k) : addMonthsClamped(startDate, k);
+    frequency === "weekly" ? addDays(startDate, 7 * k) : addMonthsClamped(startDate, monthsPerStep * k);
 
   let k = 0;
   let d = startDate;
@@ -147,5 +148,7 @@ export async function materializeDueRecurring(userId: string, upTo: string): Pro
 export function monthlyEquivalent(frequency: Frequency, amount: number): number {
   if (frequency === "daily") return amount * 30;
   if (frequency === "weekly") return amount * 4;
+  if (frequency === "quarterly") return Math.round(amount / 3);
+  if (frequency === "yearly") return Math.round(amount / 12);
   return amount;
 }

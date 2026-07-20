@@ -26,6 +26,9 @@ import { useCurrency } from "@/hooks/use-currency";
 const formSchema = z.object({
   dailyLimit: z.coerce.number().min(1, "Daily limit must be at least $1"),
   monthlyLimit: z.coerce.number().min(1, "Monthly limit must be at least $1"),
+  // Empty string means "not set" — cleared to null on submit.
+  salaryAmount: z.string(),
+  salaryDay: z.string(),
 });
 
 export default function Budget() {
@@ -43,6 +46,8 @@ export default function Budget() {
     defaultValues: {
       dailyLimit: 0,
       monthlyLimit: 0,
+      salaryAmount: "",
+      salaryDay: "",
     },
   });
 
@@ -54,17 +59,38 @@ export default function Budget() {
       form.reset({
         dailyLimit: budget.dailyLimit,
         monthlyLimit: budget.monthlyLimit,
+        salaryAmount: budget.salaryAmount === null ? "" : String(budget.salaryAmount),
+        salaryDay: budget.salaryDay === null ? "" : String(budget.salaryDay),
       });
     }
   }, [budget, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const salaryAmount = values.salaryAmount.trim() === "" ? null : parseFloat(values.salaryAmount);
+    const salaryDay = values.salaryDay.trim() === "" ? null : parseInt(values.salaryDay, 10);
+    if (salaryAmount !== null && (Number.isNaN(salaryAmount) || salaryAmount < 1)) {
+      form.setError("salaryAmount", { message: "Enter a valid salary amount, or leave it empty." });
+      return;
+    }
+    if (salaryDay !== null && (Number.isNaN(salaryDay) || salaryDay < 1 || salaryDay > 31)) {
+      form.setError("salaryDay", { message: "Pick a day between 1 and 31, or leave it empty." });
+      return;
+    }
     updateBudget.mutate(
-      { data: values },
+      {
+        data: {
+          dailyLimit: values.dailyLimit,
+          monthlyLimit: values.monthlyLimit,
+          salaryAmount,
+          salaryDay,
+        },
+      },
       {
         onSuccess: (updatedBudget) => {
           queryClient.setQueryData(getGetBudgetQueryKey(), updatedBudget);
           queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary/daily"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/insights/stats"] });
+          queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
             title: "Settings saved",
             description: "Your Ember limits have been successfully updated.",
@@ -157,6 +183,61 @@ export default function Budget() {
                       )}
                     />
 
+                    <div className="pt-2 border-t border-border/50 space-y-2">
+                      <div className="text-lg font-medium pt-4">Salary anchoring</div>
+                      <p className="text-sm text-muted-foreground">
+                        Tell Ember when your salary lands and budgets run payday to payday instead of by calendar month.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <FormField
+                        control={form.control}
+                        name="salaryAmount"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel className="text-base font-medium">Salary per payday</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">{currencySymbol(currency)}</span>
+                                <Input
+                                  type="number"
+                                  placeholder="Optional"
+                                  className="pl-10 h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
+                                  data-testid="input-salary-amount"
+                                  {...field}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="salaryDay"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormLabel className="text-base font-medium">Day it lands</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={31}
+                                placeholder="e.g. 25"
+                                className="h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
+                                data-testid="input-salary-day"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs">
+                              1–31 · leave both empty for calendar-month budgeting.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
                     <div className="pt-6 flex justify-end">
                       <Button 
                         type="submit" 
@@ -197,12 +278,18 @@ export default function Budget() {
               <CardContent className="p-8">
                 <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-3">Alignment Check</h3>
                 <div className="text-base text-foreground mb-6 leading-relaxed font-medium">
-                  Your daily target equals <span className="font-bold">{format(budget.dailyLimit * 30)}</span> over a typical 30-day month.
+                  Your daily target equals <span className="font-bold">{format(budget.dailyLimit * 30)}</span> over a typical 30-day {budget.salaryDay !== null ? "salary cycle" : "month"}.
                 </div>
                 <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Ceiling</span>
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{budget.salaryDay !== null ? "Cycle ceiling" : "Ceiling"}</span>
                   <span className="text-foreground font-serif text-2xl font-bold">{format(budget.monthlyLimit)}</span>
                 </div>
+                {budget.salaryDay !== null && (
+                  <div className="mt-4 p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Payday</span>
+                    <span className="text-foreground font-serif text-2xl font-bold">Day {budget.salaryDay}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

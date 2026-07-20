@@ -164,3 +164,99 @@ describe("recurring materialization isolation", () => {
     }
   });
 });
+
+describe("salary-cycle budgeting", () => {
+  it("anchors stats to payday and maps quarterly obligations into the cycle", async () => {
+    const u = await createTestUser("ins-cycle");
+    try {
+      // Salary lands on the 25th → on June 10 the cycle is May 25 – Jun 24.
+      const put = await request(app)
+        .put("/api/budget")
+        .set(u.auth)
+        .send({ dailyLimit: 100, monthlyLimit: 3000, salaryAmount: 1500, salaryDay: 25 });
+      expect(put.status).toBe(200);
+      expect(put.body.salaryAmount).toBe(1500);
+      expect(put.body.salaryDay).toBe(25);
+
+      // In-cycle spend (May 28) counts; pre-cycle spend (May 20) must not.
+      await addExpense(u, 50, "2026-05-20");
+      await addExpense(u, 80, "2026-05-28");
+
+      // Quarterly rent anchored Mar 15 → occurrence Jun 15, inside the cycle and after Jun 10.
+      const rec = await request(app)
+        .post("/api/recurring")
+        .set(u.auth)
+        .send({ amount: 900, category: "Housing", description: "Quarterly rent", frequency: "quarterly", startDate: "2026-06-15" });
+      expect(rec.status).toBe(201);
+
+      const stats = await request(app).get("/api/insights/stats").set(u.auth).query({ date: "2026-06-10" });
+      expect(stats.body.cycleAnchored).toBe(true);
+      expect(stats.body.cycleStart).toBe("2026-05-25");
+      expect(stats.body.cycleEnd).toBe("2026-06-24");
+      expect(stats.body.nextPayday).toBe("2026-06-25");
+      expect(stats.body.daysUntilPayday).toBe(15);
+      expect(stats.body.daysInMonth).toBe(31); // cycle length May 25 – Jun 24
+      expect(stats.body.daysElapsed).toBe(17);
+      expect(stats.body.monthToDate).toBe(80);
+      expect(stats.body.salaryAmount).toBe(1500);
+      expect(stats.body.committedRemaining).toBe(900);
+      expect(stats.body.upcomingObligations[0]).toMatchObject({
+        description: "Quarterly rent",
+        amount: 900,
+        date: "2026-06-15",
+        frequency: "quarterly",
+      });
+    } finally {
+      await destroyTestUsers(u);
+    }
+  });
+
+  it("falls back to the calendar month when no salary day is set", async () => {
+    const u = await createTestUser("ins-nocycle");
+    try {
+      await request(app).put("/api/budget").set(u.auth).send({ dailyLimit: 100, monthlyLimit: 3000 });
+      const stats = await request(app).get("/api/insights/stats").set(u.auth).query({ date: "2026-06-10" });
+      expect(stats.body.cycleAnchored).toBe(false);
+      expect(stats.body.cycleStart).toBe("2026-06-01");
+      expect(stats.body.cycleEnd).toBe("2026-06-30");
+      expect(stats.body.nextPayday).toBeNull();
+    } finally {
+      await destroyTestUsers(u);
+    }
+  });
+});
+
+describe("salary fields round-trip", () => {
+  it("sets, then clears to null, and stats falls back to calendar month", async () => {
+    const u = await createTestUser("ins-roundtrip");
+    try {
+      const set = await request(app)
+        .put("/api/budget")
+        .set(u.auth)
+        .send({ dailyLimit: 100, monthlyLimit: 3000, salaryAmount: 1200, salaryDay: 28 });
+      expect(set.body.salaryAmount).toBe(1200);
+      expect(set.body.salaryDay).toBe(28);
+
+      let stats = await request(app).get("/api/insights/stats").set(u.auth).query({ date: "2026-02-10" });
+      expect(stats.body.cycleAnchored).toBe(true);
+      expect(stats.body.cycleStart).toBe("2026-01-28");
+      // Feb has 28 days, so payday day-28 stays as-is.
+      expect(stats.body.nextPayday).toBe("2026-02-28");
+
+      const clear = await request(app)
+        .put("/api/budget")
+        .set(u.auth)
+        .send({ dailyLimit: 100, monthlyLimit: 3000, salaryAmount: null, salaryDay: null });
+      expect(clear.status).toBe(200);
+      expect(clear.body.salaryAmount).toBeNull();
+      expect(clear.body.salaryDay).toBeNull();
+
+      stats = await request(app).get("/api/insights/stats").set(u.auth).query({ date: "2026-02-10" });
+      expect(stats.body.cycleAnchored).toBe(false);
+      expect(stats.body.cycleStart).toBe("2026-02-01");
+      expect(stats.body.salaryAmount).toBeNull();
+    } finally {
+      await destroyTestUsers(u);
+    }
+  });
+});
