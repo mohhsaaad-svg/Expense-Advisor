@@ -1,4 +1,4 @@
-import { pgTable, serial, numeric, timestamp, varchar, uniqueIndex, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, numeric, integer, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./auth";
@@ -11,12 +11,13 @@ export const budgetTable = pgTable(
     userId: varchar("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    dailyLimit: numeric("daily_limit", { precision: 10, scale: 2 }).notNull().default("100"),
-    monthlyLimit: numeric("monthly_limit", { precision: 10, scale: 2 }).notNull().default("2000"),
+    dailyLimit: numeric("daily_limit", { precision: 12, scale: 3 }).notNull().default("100"),
+    monthlyLimit: numeric("monthly_limit", { precision: 12, scale: 3 }).notNull().default("2000"),
     // Salary anchoring: when set, budgeting runs payday -> next payday instead
     // of the calendar month. salaryDay is the day-of-month the salary lands
     // (1-31; 29-31 clamp into short months). Null = calendar-month fallback.
-    salaryAmount: numeric("salary_amount", { precision: 10, scale: 2 }),
+    // numeric(12,3) so 3-decimal currencies (JOD/KWD/BHD) stay exact.
+    salaryAmount: numeric("salary_amount", { precision: 12, scale: 3 }),
     salaryDay: integer("salary_day"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

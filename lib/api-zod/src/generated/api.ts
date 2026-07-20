@@ -400,7 +400,7 @@ export const DeleteRecurringExpenseResponse = zod.void()
  */
 export const GetPreferencesResponse = zod.object({
   "id": zod.number(),
-  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'JOD', 'KWD', 'BHD']),
   "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
   "paydayPromptDismissed": zod.boolean().describe('Whether the payday budgeting prompt has been dismissed for this account'),
@@ -417,7 +417,7 @@ export const updatePreferencesBodyAlertThresholdMax = 100;
 
 
 export const UpdatePreferencesBody = zod.object({
-  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'JOD', 'KWD', 'BHD']),
   "language": zod.enum(['en', 'ar']).optional(),
   "alertThreshold": zod.number().min(updatePreferencesBodyAlertThresholdMin).max(updatePreferencesBodyAlertThresholdMax),
   "paydayPromptDismissed": zod.boolean().optional().describe('Omit to leave the current value unchanged')
@@ -425,11 +425,45 @@ export const UpdatePreferencesBody = zod.object({
 
 export const UpdatePreferencesResponse = zod.object({
   "id": zod.number(),
-  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD', 'JOD', 'KWD', 'BHD']),
   "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
   "paydayPromptDismissed": zod.boolean().describe('Whether the payday budgeting prompt has been dismissed for this account'),
   "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * Deterministic server-computed "safe to spend until next salary" figure with a full traceable breakdown (salary − spent this cycle − upcoming commitments − goal buffers)
+ * @summary Safe-to-spend before payday
+ */
+export const GetSafeToSpendQueryParams = zod.object({
+  "date": zod.coerce.string().optional()
+})
+
+export const GetSafeToSpendResponse = zod.object({
+  "date": zod.string().describe('The \"today\" the figure was computed for (YYYY-MM-DD)'),
+  "configured": zod.boolean().describe('False until salaryAmount and salaryDay are set on the budget'),
+  "salaryDay": zod.number().nullable(),
+  "cycleStart": zod.string().nullable().describe('Most recent salary date on or before `date`'),
+  "nextPayday": zod.string().nullable().describe('Next salary date (exclusive end of the cycle)'),
+  "daysUntilPayday": zod.number().nullable(),
+  "salary": zod.number().nullable().describe('Net salary received at cycle start'),
+  "spentThisCycle": zod.number().describe('Everything logged from cycleStart through `date`'),
+  "upcomingCommitments": zod.array(zod.object({
+  "description": zod.string(),
+  "amount": zod.number().describe('Committed amount due before payday'),
+  "dueDate": zod.string().describe('ISO date string (YYYY-MM-DD)')
+})).describe('Recurring charges still due strictly before nextPayday'),
+  "upcomingCommitmentsTotal": zod.number(),
+  "goalBuffers": zod.array(zod.object({
+  "name": zod.string(),
+  "amount": zod.number().describe('Amount reserved for this goal this pay cycle'),
+  "deadline": zod.string().nullable().describe('Goal deadline (YYYY-MM-DD)')
+})).describe('Per-goal reservations for deadline-driven savings goals'),
+  "goalBuffersTotal": zod.number(),
+  "safeToSpend": zod.number().nullable().describe('salary − spentThisCycle − upcomingCommitmentsTotal − goalBuffersTotal'),
+  "safePerDay": zod.number().nullable().describe('max(0, safeToSpend) spread across daysUntilPayday')
 })
 
 
@@ -462,7 +496,7 @@ export const GetSpendingTipsResponse = zod.object({
  */
 export const GetBudgetResponse = zod.object({
   "id": zod.number(),
-  "dailyLimit": zod.number().describe('Daily spending limit in dollars'),
+  "dailyLimit": zod.number().describe('Daily spending limit in major currency units'),
   "monthlyLimit": zod.number().describe('Spending ceiling per salary cycle (or calendar month when no salary day is set)'),
   "salaryAmount": zod.number().nullable().describe('Net salary landing each payday; null when not set'),
   "salaryDay": zod.number().nullable().describe('Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting'),
@@ -475,6 +509,7 @@ export const GetBudgetResponse = zod.object({
  */
 
 
+export const updateBudgetBodySalaryAmountMin = 0.001;
 
 export const updateBudgetBodySalaryDayMax = 31;
 
@@ -483,13 +518,13 @@ export const updateBudgetBodySalaryDayMax = 31;
 export const UpdateBudgetBody = zod.object({
   "dailyLimit": zod.number().min(1),
   "monthlyLimit": zod.number().min(1),
-  "salaryAmount": zod.number().min(1).nullish().describe('Net salary per payday; null clears it'),
-  "salaryDay": zod.number().min(1).max(updateBudgetBodySalaryDayMax).nullish().describe('Day of month the salary lands; null switches back to calendar-month budgeting')
+  "salaryAmount": zod.number().min(updateBudgetBodySalaryAmountMin).nullish().describe('Net salary per payday; null clears it, omitted leaves it unchanged'),
+  "salaryDay": zod.number().min(1).max(updateBudgetBodySalaryDayMax).nullish().describe('Day of month the salary lands; null switches back to calendar-month budgeting, omitted leaves it unchanged')
 })
 
 export const UpdateBudgetResponse = zod.object({
   "id": zod.number(),
-  "dailyLimit": zod.number().describe('Daily spending limit in dollars'),
+  "dailyLimit": zod.number().describe('Daily spending limit in major currency units'),
   "monthlyLimit": zod.number().describe('Spending ceiling per salary cycle (or calendar month when no salary day is set)'),
   "salaryAmount": zod.number().nullable().describe('Net salary landing each payday; null when not set'),
   "salaryDay": zod.number().nullable().describe('Day of month the salary lands (1-31, clamped into short months); null = calendar-month budgeting'),

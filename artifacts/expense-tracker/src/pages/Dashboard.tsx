@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+import { useState } from "react";
+import { Link } from "wouter";
 import {
   useGetDailySummary,
   getGetDailySummaryQueryKey,
@@ -8,16 +11,18 @@ import {
   useGetPreferences,
   getGetPreferencesQueryKey,
   useUpdatePreferences,
+  useGetSafeToSpend,
+  getGetSafeToSpendQueryKey,
+  type SafeToSpend,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { localDateKey } from "@/lib/utils";
-import { useState } from "react";
-import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
+import { localDateKey, formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SummarySkeleton } from "@/components/Skeletons";
-import { Flame, Lightbulb, TrendingDown, ShieldAlert, CalendarClock, X } from "lucide-react";
+import { Flame, Lightbulb, TrendingDown, ShieldAlert, CalendarClock, X, Wallet, ChevronDown, ArrowRight, AlertTriangle } from "lucide-react";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { StatCards } from "@/components/StatCards";
 import { CountUp } from "@/components/CountUp";
@@ -92,6 +97,16 @@ export default function Dashboard() {
     !!prefs &&
     !prefs.paydayPromptDismissed &&
     !dismissedLocally;
+
+  const { data: safe, isLoading: loadingSafe } = useGetSafeToSpend(
+    { date: todayKey },
+    {
+      query: {
+        queryKey: getGetSafeToSpendQueryKey({ date: todayKey }),
+        refetchInterval: 60_000,
+      },
+    }
+  );
 
   const getAlertIcon = (type: string) => {
     switch (type) {
@@ -239,6 +254,8 @@ export default function Dashboard() {
         </Card>
       )}
 
+      <SafeToSpendCard safe={safe} loading={loadingSafe} format={format} />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-7 space-y-8">
           {loadingSummary || !summary ? (
@@ -343,6 +360,224 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SafeToSpendCard({
+  safe,
+  loading,
+  format,
+}: {
+  safe: SafeToSpend | undefined;
+  loading: boolean;
+  format: (n: number) => string;
+}) {
+  const [showMath, setShowMath] = useState(false);
+
+  if (loading || !safe) {
+    return <Skeleton className="h-40 rounded-3xl" />;
+  }
+
+  // Not configured — friendly setup state linking to Budget.
+  if (!safe.configured) {
+    return (
+      <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative" data-testid="card-safe-to-spend-setup">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+        <CardContent className="p-8 flex flex-col sm:flex-row sm:items-center gap-6 relative z-10">
+          <div className="w-14 h-14 shrink-0 bg-primary/10 rounded-2xl flex items-center justify-center">
+            <Wallet className="w-7 h-7 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-2xl font-serif font-bold tracking-tight text-foreground mb-1">Safe to spend before payday</h3>
+            <p className="text-base text-muted-foreground leading-relaxed max-w-xl">
+              Tell Ember your salary and payday and we'll show a verified number you can spend before the next paycheck — with the math.
+            </p>
+          </div>
+          <Link href="/budget" className="shrink-0">
+            <Button className="h-14 gap-2 px-6 rounded-full shadow-lg shadow-primary/20 hover-elevate text-lg transition-all" data-testid="button-setup-safe-to-spend">
+              Set your salary and payday
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const negative = (safe.safeToSpend ?? 0) < 0;
+  const days = safe.daysUntilPayday ?? 0;
+
+  return (
+    <Card
+      className={cn(
+        "shadow-sm rounded-3xl overflow-hidden relative",
+        negative ? "bg-destructive/5 border-destructive/30" : "bg-card border-card-border/60"
+      )}
+      data-testid="card-safe-to-spend"
+    >
+      <div className={cn("absolute top-0 right-0 w-72 h-72 rounded-bl-full pointer-events-none", negative ? "bg-destructive/10" : "bg-primary/5")} />
+      <CardHeader className="pb-2 pt-8 px-8 relative z-10">
+        <CardTitle className="flex items-center gap-2 text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">
+          {negative ? <AlertTriangle className="w-4 h-4 text-destructive" /> : <Wallet className="w-4 h-4 text-primary" />}
+          Safe to spend before payday
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-8 pb-8 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+          <div>
+            <div className="flex items-baseline gap-3 mb-2">
+              <CountUp
+                value={safe.safeToSpend ?? 0}
+                format={format}
+                className={cn(
+                  "text-6xl font-serif tracking-tighter font-bold",
+                  negative ? "text-destructive" : "text-foreground"
+                )}
+              />
+            </div>
+            {safe.nextPayday && (
+              <p className="text-lg text-muted-foreground font-light">
+                until {formatDate(safe.nextPayday)} · {days} day{days === 1 ? "" : "s"}
+              </p>
+            )}
+            {negative && (
+              <p className="text-sm text-destructive font-semibold mt-2">
+                You're over your cushion — ease off before payday.
+              </p>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-widest mb-1">Per day</div>
+            <div className="font-serif text-3xl font-bold tracking-tight text-foreground">
+              {format(safe.safePerDay ?? 0)}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 font-medium">a day until payday</div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowMath((v) => !v)}
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:opacity-80 transition-opacity"
+          data-testid="button-show-math"
+          aria-expanded={showMath}
+        >
+          Show the math
+          <ChevronDown className={cn("w-4 h-4 transition-transform", showMath && "rotate-180")} />
+        </button>
+
+        {showMath && (
+          <div className="mt-4 p-6 rounded-2xl bg-background/60 border border-border/60 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300" data-testid="safe-to-spend-math">
+            <MathRow
+              label={
+                <>
+                  Salary
+                  {safe.cycleStart && (
+                    <span className="text-muted-foreground font-normal"> · received {formatDate(safe.cycleStart)}</span>
+                  )}
+                </>
+              }
+              value={format(safe.salary ?? 0)}
+              emphasize
+            />
+            <MathRow label="Spent this cycle" value={`− ${format(safe.spentThisCycle)}`} negative />
+
+            {safe.upcomingCommitments.length > 0 && (
+              <div className="pt-2 border-t border-border/40 space-y-2">
+                <div className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">Upcoming commitments</div>
+                {safe.upcomingCommitments.map((c, i) => (
+                  <MathRow
+                    key={`${c.description}-${c.dueDate}-${i}`}
+                    label={
+                      <>
+                        {c.description}
+                        <span className="text-muted-foreground font-normal"> · due {formatDate(c.dueDate)}</span>
+                      </>
+                    }
+                    value={`− ${format(c.amount)}`}
+                    negative
+                    indent
+                  />
+                ))}
+                <MathRow label="Commitments total" value={`− ${format(safe.upcomingCommitmentsTotal)}`} negative subtle />
+              </div>
+            )}
+
+            {safe.goalBuffers.length > 0 && (
+              <div className="pt-2 border-t border-border/40 space-y-2">
+                <div className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">Goal buffers</div>
+                {safe.goalBuffers.map((g, i) => (
+                  <MathRow
+                    key={`${g.name}-${i}`}
+                    label={
+                      <>
+                        {g.name}
+                        {g.deadline && (
+                          <span className="text-muted-foreground font-normal"> · by {formatDate(g.deadline)}</span>
+                        )}
+                      </>
+                    }
+                    value={`− ${format(g.amount)}`}
+                    negative
+                    indent
+                  />
+                ))}
+                <MathRow label="Goal buffers total" value={`− ${format(safe.goalBuffersTotal)}`} negative subtle />
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-border">
+              <MathRow
+                label="Safe to spend"
+                value={format(safe.safeToSpend ?? 0)}
+                emphasize
+                negative={negative}
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MathRow({
+  label,
+  value,
+  emphasize,
+  negative,
+  subtle,
+  indent,
+}: {
+  label: ReactNode;
+  value: string;
+  emphasize?: boolean;
+  negative?: boolean;
+  subtle?: boolean;
+  indent?: boolean;
+}) {
+  return (
+    <div className={cn("flex items-baseline justify-between gap-4", indent && "pl-4")}>
+      <span
+        className={cn(
+          "text-sm",
+          emphasize ? "font-semibold text-foreground" : "text-foreground",
+          subtle && "text-muted-foreground font-medium"
+        )}
+      >
+        {label}
+      </span>
+      <span
+        className={cn(
+          "font-serif tabular-nums shrink-0",
+          emphasize ? "text-lg font-bold" : "text-base font-semibold",
+          negative ? "text-destructive" : emphasize ? "text-foreground" : "text-foreground",
+          subtle && "text-sm font-semibold"
+        )}
+      >
+        {value}
+      </span>
     </div>
   );
 }

@@ -8,7 +8,7 @@
 
 export interface Budget {
   id: number;
-  /** Daily spending limit in dollars */
+  /** Daily spending limit in major currency units */
   dailyLimit: number;
   /** Spending ceiling per salary cycle (or calendar month when no salary day is set) */
   monthlyLimit: number;

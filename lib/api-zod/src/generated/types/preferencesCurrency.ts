@@ -17,4 +17,7 @@ export const PreferencesCurrency = {
   INR: 'INR',
   CAD: 'CAD',
   AUD: 'AUD',
+  JOD: 'JOD',
+  KWD: 'KWD',
+  BHD: 'BHD',
 } as const;

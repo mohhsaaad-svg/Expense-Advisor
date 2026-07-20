@@ -70,7 +70,8 @@ router.put("/budget", async (req, res): Promise<void> => {
     .set({
       dailyLimit: body.data.dailyLimit.toString(),
       monthlyLimit: body.data.monthlyLimit.toString(),
-      // Only touch salary fields when the client sends them (null clears).
+      // Only touch salary fields when the client sends them: omitted keys
+      // leave stored values alone; explicit nulls clear them.
       ...(body.data.salaryAmount !== undefined && {
         salaryAmount: body.data.salaryAmount === null ? null : body.data.salaryAmount.toString(),
       }),

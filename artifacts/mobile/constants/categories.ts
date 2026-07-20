@@ -66,7 +66,12 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: '₹',
   CAD: 'CA$',
   AUD: 'A$',
+  JOD: 'JOD ',
+  KWD: 'KD ',
+  BHD: 'BD ',
 };
+
+const THREE_DECIMAL_CURRENCIES = new Set(['JOD', 'KWD', 'BHD']);
 
 export function currencySymbol(currency: string = 'USD'): string {
   return CURRENCY_SYMBOLS[currency] ?? '$';
@@ -90,7 +95,8 @@ export function formatMoney(
   currency: string = 'USD',
   lang: Lang = 'en',
 ): string {
-  const decimals = currency === 'JPY' ? 0 : 2;
+  const decimals =
+    currency === 'JPY' ? 0 : THREE_DECIMAL_CURRENCIES.has(currency) ? 3 : 2;
   try {
     return new Intl.NumberFormat(intlLocale(lang), {
       style: 'currency',

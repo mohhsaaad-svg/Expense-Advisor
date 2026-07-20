@@ -38,6 +38,7 @@ import type {
   ExpenseInput,
   ExpenseUpdate,
   GetDailySummaryParams,
+  GetSafeToSpendParams,
   GetSpendingStatsParams,
   GetSpendingTipsParams,
   GetWeeklySummaryParams,
@@ -61,6 +62,7 @@ import type {
   RecurringExpense,
   RecurringExpenseInput,
   RecurringExpenseUpdate,
+  SafeToSpend,
   SpendingInsights,
   SpendingStats,
   WeeklySummary
@@ -1713,6 +1715,91 @@ export const useUpdatePreferences = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getUpdatePreferencesMutationOptions(options));
     }
+
+export const getGetSafeToSpendUrl = (params?: GetSafeToSpendParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/insights/safe-to-spend?${stringifiedParams}` : `/api/insights/safe-to-spend`
+}
+
+/**
+ * Deterministic server-computed "safe to spend until next salary" figure with a full traceable breakdown (salary − spent this cycle − upcoming commitments − goal buffers)
+ * @summary Safe-to-spend before payday
+ */
+export const getSafeToSpend = async (params?: GetSafeToSpendParams, options?: RequestInit): Promise<SafeToSpend> => {
+
+  return customFetch<SafeToSpend>(getGetSafeToSpendUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSafeToSpendQueryKey = (params?: GetSafeToSpendParams,) => {
+    return [
+    `/api/insights/safe-to-spend`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSafeToSpendQueryOptions = <TData = Awaited<ReturnType<typeof getSafeToSpend>>, TError = ErrorType<ErrorResponse>>(params?: GetSafeToSpendParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafeToSpend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSafeToSpendQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafeToSpend>>> = ({ signal }) => getSafeToSpend(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSafeToSpend>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSafeToSpendQueryResult = NonNullable<Awaited<ReturnType<typeof getSafeToSpend>>>
+export type GetSafeToSpendQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Safe-to-spend before payday
+ */
+
+export function useGetSafeToSpend<TData = Awaited<ReturnType<typeof getSafeToSpend>>, TError = ErrorType<ErrorResponse>>(
+ params?: GetSafeToSpendParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafeToSpend>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSafeToSpendQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSpendingTipsUrl = (params?: GetSpendingTipsParams,) => {
   const normalizedParams = new URLSearchParams();

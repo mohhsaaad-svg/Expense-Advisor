@@ -118,7 +118,7 @@ export interface ExpenseUpdate {
 
 export interface Budget {
   id: number;
-  /** Daily spending limit in dollars */
+  /** Daily spending limit in major currency units */
   dailyLimit: number;
   /** Spending ceiling per salary cycle (or calendar month when no salary day is set) */
   monthlyLimit: number;
@@ -142,18 +142,81 @@ export interface BudgetInput {
   /** @minimum 1 */
   monthlyLimit: number;
   /**
-     * Net salary per payday; null clears it
-     * @minimum 1
+     * Net salary per payday; null clears it, omitted leaves it unchanged
+     * @minimum 0.001
      * @nullable
      */
   salaryAmount?: number | null;
   /**
-     * Day of month the salary lands; null switches back to calendar-month budgeting
+     * Day of month the salary lands; null switches back to calendar-month budgeting, omitted leaves it unchanged
      * @minimum 1
      * @maximum 31
      * @nullable
      */
   salaryDay?: number | null;
+}
+
+export interface SafeToSpendCommitment {
+  description: string;
+  /** Committed amount due before payday */
+  amount: number;
+  /** ISO date string (YYYY-MM-DD) */
+  dueDate: string;
+}
+
+export interface SafeToSpendGoalBuffer {
+  name: string;
+  /** Amount reserved for this goal this pay cycle */
+  amount: number;
+  /**
+     * Goal deadline (YYYY-MM-DD)
+     * @nullable
+     */
+  deadline: string | null;
+}
+
+export interface SafeToSpend {
+  /** The "today" the figure was computed for (YYYY-MM-DD) */
+  date: string;
+  /** False until salaryAmount and salaryDay are set on the budget */
+  configured: boolean;
+  /** @nullable */
+  salaryDay: number | null;
+  /**
+     * Most recent salary date on or before `date`
+     * @nullable
+     */
+  cycleStart: string | null;
+  /**
+     * Next salary date (exclusive end of the cycle)
+     * @nullable
+     */
+  nextPayday: string | null;
+  /** @nullable */
+  daysUntilPayday: number | null;
+  /**
+     * Net salary received at cycle start
+     * @nullable
+     */
+  salary: number | null;
+  /** Everything logged from cycleStart through `date` */
+  spentThisCycle: number;
+  /** Recurring charges still due strictly before nextPayday */
+  upcomingCommitments: SafeToSpendCommitment[];
+  upcomingCommitmentsTotal: number;
+  /** Per-goal reservations for deadline-driven savings goals */
+  goalBuffers: SafeToSpendGoalBuffer[];
+  goalBuffersTotal: number;
+  /**
+     * salary − spentThisCycle − upcomingCommitmentsTotal − goalBuffersTotal
+     * @nullable
+     */
+  safeToSpend: number | null;
+  /**
+     * max(0, safeToSpend) spread across daysUntilPayday
+     * @nullable
+     */
+  safePerDay: number | null;
 }
 
 export interface CategoryBreakdown {
@@ -287,6 +350,9 @@ export const PreferencesCurrency = {
   INR: 'INR',
   CAD: 'CAD',
   AUD: 'AUD',
+  JOD: 'JOD',
+  KWD: 'KWD',
+  BHD: 'BHD',
 } as const;
 
 /**
@@ -324,6 +390,9 @@ export const PreferencesInputCurrency = {
   INR: 'INR',
   CAD: 'CAD',
   AUD: 'AUD',
+  JOD: 'JOD',
+  KWD: 'KWD',
+  BHD: 'BHD',
 } as const;
 
 export type PreferencesInputLanguage = typeof PreferencesInputLanguage[keyof typeof PreferencesInputLanguage];
@@ -601,6 +670,13 @@ date?: string;
 export type GetSpendingStatsParams = {
 /**
  * ISO date string (YYYY-MM-DD), defaults to today
+ */
+date?: string;
+};
+
+export type GetSafeToSpendParams = {
+/**
+ * ISO date string (YYYY-MM-DD) treated as "today", defaults to server date
  */
 date?: string;
 };

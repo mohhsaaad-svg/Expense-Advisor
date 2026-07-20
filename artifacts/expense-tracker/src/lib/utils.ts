@@ -32,6 +32,9 @@ export const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: "₹",
   CAD: "CA$",
   AUD: "A$",
+  JOD: "JOD",
+  KWD: "KD",
+  BHD: "BD",
 };
 
 export function currencySymbol(currency: string): string {

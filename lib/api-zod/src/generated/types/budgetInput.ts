@@ -12,13 +12,13 @@ export interface BudgetInput {
   /** @minimum 1 */
   monthlyLimit: number;
   /**
-     * Net salary per payday; null clears it
-     * @minimum 1
+     * Net salary per payday; null clears it, omitted leaves it unchanged
+     * @minimum 0.001
      * @nullable
      */
   salaryAmount?: number | null;
   /**
-     * Day of month the salary lands; null switches back to calendar-month budgeting
+     * Day of month the salary lands; null switches back to calendar-month budgeting, omitted leaves it unchanged
      * @minimum 1
      * @maximum 31
      * @nullable

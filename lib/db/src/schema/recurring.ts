@@ -11,7 +11,7 @@ export const recurringExpensesTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     description: text("description").notNull(),
-    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
     category: text("category").notNull(),
     // daily | weekly | monthly | quarterly | yearly
     frequency: text("frequency").notNull(),

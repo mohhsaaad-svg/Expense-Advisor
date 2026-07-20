@@ -485,6 +485,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /insights/safe-to-spend:
+    get:
+      operationId: getSafeToSpend
+      tags: [insights]
+      summary: Safe-to-spend before payday
+      description: Deterministic server-computed "safe to spend until next salary" figure with a full traceable breakdown (salary − spent this cycle − upcoming commitments − goal buffers)
+      parameters:
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date string (YYYY-MM-DD) treated as "today", defaults to server date
+      responses:
+        "200":
+          description: Safe-to-spend breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafeToSpend"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /insights/tips:
     get:
       operationId: getSpendingTips
@@ -1167,7 +1194,7 @@ components:
           type: integer
         dailyLimit:
           type: number
-          description: Daily spending limit in dollars
+          description: Daily spending limit in major currency units
         monthlyLimit:
           type: number
           description: Spending ceiling per salary cycle (or calendar month when no salary day is set)
@@ -1193,13 +1220,89 @@ components:
           minimum: 1
         salaryAmount:
           type: [number, 'null']
-          minimum: 1
-          description: Net salary per payday; null clears it
+          minimum: 0.001
+          description: Net salary per payday; null clears it, omitted leaves it unchanged
         salaryDay:
           type: [integer, 'null']
           minimum: 1
           maximum: 31
-          description: Day of month the salary lands; null switches back to calendar-month budgeting
+          description: Day of month the salary lands; null switches back to calendar-month budgeting, omitted leaves it unchanged
+
+    SafeToSpendCommitment:
+      type: object
+      required: [description, amount, dueDate]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          description: Committed amount due before payday
+        dueDate:
+          type: string
+          description: ISO date string (YYYY-MM-DD)
+
+    SafeToSpendGoalBuffer:
+      type: object
+      required: [name, amount, deadline]
+      properties:
+        name:
+          type: string
+        amount:
+          type: number
+          description: Amount reserved for this goal this pay cycle
+        deadline:
+          type: [string, 'null']
+          description: Goal deadline (YYYY-MM-DD)
+
+    SafeToSpend:
+      type: object
+      required:
+        [date, configured, salaryDay, cycleStart, nextPayday, daysUntilPayday, salary,
+         spentThisCycle, upcomingCommitments, upcomingCommitmentsTotal, goalBuffers,
+         goalBuffersTotal, safeToSpend, safePerDay]
+      properties:
+        date:
+          type: string
+          description: The "today" the figure was computed for (YYYY-MM-DD)
+        configured:
+          type: boolean
+          description: False until salaryAmount and salaryDay are set on the budget
+        salaryDay:
+          type: [integer, 'null']
+        cycleStart:
+          type: [string, 'null']
+          description: Most recent salary date on or before `date`
+        nextPayday:
+          type: [string, 'null']
+          description: Next salary date (exclusive end of the cycle)
+        daysUntilPayday:
+          type: [integer, 'null']
+        salary:
+          type: [number, 'null']
+          description: Net salary received at cycle start
+        spentThisCycle:
+          type: number
+          description: Everything logged from cycleStart through `date`
+        upcomingCommitments:
+          type: array
+          description: Recurring charges still due strictly before nextPayday
+          items:
+            $ref: "#/components/schemas/SafeToSpendCommitment"
+        upcomingCommitmentsTotal:
+          type: number
+        goalBuffers:
+          type: array
+          description: Per-goal reservations for deadline-driven savings goals
+          items:
+            $ref: "#/components/schemas/SafeToSpendGoalBuffer"
+        goalBuffersTotal:
+          type: number
+        safeToSpend:
+          type: [number, 'null']
+          description: salary − spentThisCycle − upcomingCommitmentsTotal − goalBuffersTotal
+        safePerDay:
+          type: [number, 'null']
+          description: max(0, safeToSpend) spread across daysUntilPayday
 
     CategoryBreakdown:
       type: object
@@ -1365,7 +1468,7 @@ components:
           type: integer
         currency:
           type: string
-          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD, JOD, KWD, BHD]
         language:
           type: string
           enum: [en, ar]
@@ -1386,7 +1489,7 @@ components:
       properties:
         currency:
           type: string
-          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+          enum: [USD, EUR, GBP, JPY, INR, CAD, AUD, JOD, KWD, BHD]
         language:
           type: string
           enum: [en, ar]

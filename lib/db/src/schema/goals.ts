@@ -11,8 +11,8 @@ export const goalsTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    targetAmount: numeric("target_amount", { precision: 10, scale: 2 }).notNull(),
-    savedAmount: numeric("saved_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+    targetAmount: numeric("target_amount", { precision: 12, scale: 3 }).notNull(),
+    savedAmount: numeric("saved_amount", { precision: 12, scale: 3 }).notNull().default("0"),
     // Optional target date for the goal (YYYY-MM-DD)
     deadline: date("deadline"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

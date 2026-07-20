@@ -13,7 +13,7 @@ export const expensesTable = pgTable(
     userId: varchar("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
     category: text("category").notNull(),
     description: text("description").notNull(),
     date: date("date").notNull(),

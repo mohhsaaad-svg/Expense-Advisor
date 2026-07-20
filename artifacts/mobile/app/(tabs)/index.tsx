@@ -25,10 +25,12 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   getGetDailySummaryQueryKey,
   getGetPreferencesQueryKey,
+  getGetSafeToSpendQueryKey,
   getGetSpendingStatsQueryKey,
   getGetSpendingTipsQueryKey,
   useGetDailySummary,
   useGetPreferences,
+  useGetSafeToSpend,
   useGetSpendingStats,
   useGetSpendingTips,
   useGetWeeklySummary,
@@ -89,6 +91,17 @@ export default function TodayScreen() {
       },
     },
   );
+  const safe = useGetSafeToSpend(
+    { date: todayKey },
+    {
+      query: {
+        queryKey: getGetSafeToSpendQueryKey({ date: todayKey }),
+        refetchInterval: 60_000,
+      },
+    },
+  );
+
+  const [mathOpen, setMathOpen] = React.useState(false);
 
   // Dismissal lives in server-side preferences so it follows the account
   // across devices. While preferences load, the prompt stays hidden —
@@ -125,13 +138,15 @@ export default function TodayScreen() {
     daily.isRefetching ||
     weekly.isRefetching ||
     insights.isRefetching ||
-    stats.isRefetching;
+    stats.isRefetching ||
+    safe.isRefetching;
 
   const onRefresh = () => {
     daily.refetch();
     weekly.refetch();
     insights.refetch();
     stats.refetch();
+    safe.refetch();
   };
 
   const topPad = Platform.OS === 'web' ? 67 + 12 : insets.top + 12;
@@ -141,6 +156,9 @@ export default function TodayScreen() {
   const tips = insights.data?.tips ?? [];
   const maxDay = Math.max(1, ...(weekly.data?.days.map((d) => d.total) ?? [1]));
   const overPace = month ? month.projectedMonthEnd > month.monthlyLimit : false;
+  const safeData = safe.data;
+  const safeNegative =
+    safeData?.safeToSpend != null && safeData.safeToSpend < 0;
 
   return (
     <ScrollView
@@ -306,6 +324,281 @@ export default function TodayScreen() {
               {t('today.paydayPromptCta')}
             </Text>
           </Pressable>
+        </View>
+      ) : null}
+
+      {/* Safe to spend before payday */}
+      {safe.isLoading ? (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colorTokens.radius,
+              gap: 10,
+            },
+          ]}
+          testID="safe-loading"
+        >
+          <Skeleton width={160} height={14} />
+          <Skeleton width={140} height={38} radius={10} style={{ marginTop: 4 }} />
+          <Skeleton width={200} height={13} />
+        </View>
+      ) : safeData && !safeData.configured ? (
+        <Pressable
+          onPress={() => router.push('/budget')}
+          style={({ pressed }) => [
+            styles.card,
+            styles.safeSetup,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colorTokens.radius,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+          testID="safe-setup"
+        >
+          <View
+            style={[styles.safeSetupIcon, { backgroundColor: colors.accent }]}
+          >
+            <Ionicons name="wallet-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={[styles.safeSetupTitle, { color: colors.foreground }]}>
+              Safe to spend before payday
+            </Text>
+            <Text
+              style={[styles.safeSetupSub, { color: colors.mutedForeground }]}
+            >
+              Add your salary and payday to see what's safe to spend.
+            </Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={colors.mutedForeground}
+          />
+        </Pressable>
+      ) : safeData && safeData.configured ? (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: safeNegative ? colors.destructive : colors.border,
+              borderRadius: colorTokens.radius,
+            },
+          ]}
+          testID="safe-card"
+        >
+          <Text style={[styles.safeLabel, { color: colors.mutedForeground }]}>
+            Safe to spend before payday
+          </Text>
+          <AnimatedNumber
+            value={safeData.safeToSpend ?? 0}
+            format={format}
+            style={[
+              styles.safeAmount,
+              { color: safeNegative ? colors.destructive : colors.foreground },
+            ]}
+            testID="safe-amount"
+          />
+          {safeData.nextPayday ? (
+            <Text style={[styles.safeSub, { color: colors.mutedForeground }]}>
+              until {dateLabel(safeData.nextPayday)}
+              {safeData.daysUntilPayday != null
+                ? ` · ${safeData.daysUntilPayday} day${
+                    safeData.daysUntilPayday === 1 ? '' : 's'
+                  } left`
+                : ''}
+            </Text>
+          ) : null}
+          {safeNegative ? (
+            <Text style={[styles.safeWarn, { color: colors.destructive }]}>
+              You're past what's safe — ease off before payday.
+            </Text>
+          ) : safeData.safePerDay != null ? (
+            <View style={[styles.safePerDayPill, { backgroundColor: colors.accent }]}>
+              <Ionicons name="sunny-outline" size={13} color={colors.primary} />
+              <Text
+                style={[styles.safePerDayText, { color: colors.accentForeground }]}
+              >
+                {format(safeData.safePerDay)} a day keeps you glowing
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={() => setMathOpen((o) => !o)}
+            style={({ pressed }) => [
+              styles.mathToggle,
+              { borderTopColor: colors.border, opacity: pressed ? 0.6 : 1 },
+            ]}
+            testID="safe-see-math"
+          >
+            <Ionicons name="calculator-outline" size={15} color={colors.primary} />
+            <Text style={[styles.mathToggleText, { color: colors.primary }]}>
+              {mathOpen ? 'Hide the math' : 'See the math'}
+            </Text>
+            <Ionicons
+              name={mathOpen ? 'chevron-up' : 'chevron-down'}
+              size={15}
+              color={colors.primary}
+            />
+          </Pressable>
+
+          {mathOpen ? (
+            <View style={styles.mathBody} testID="safe-math">
+              <View style={styles.mathRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.mathDesc, { color: colors.foreground }]}>
+                    Salary
+                  </Text>
+                  {safeData.cycleStart ? (
+                    <Text
+                      style={[styles.mathMeta, { color: colors.mutedForeground }]}
+                    >
+                      received {dateLabel(safeData.cycleStart)}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={[styles.mathAmount, { color: colors.success }]}>
+                  +{format(safeData.salary ?? 0)}
+                </Text>
+              </View>
+
+              <View style={styles.mathRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.mathDesc, { color: colors.foreground }]}>
+                    Spent this cycle
+                  </Text>
+                </View>
+                <Text style={[styles.mathAmount, { color: colors.foreground }]}>
+                  −{format(safeData.spentThisCycle)}
+                </Text>
+              </View>
+
+              {safeData.upcomingCommitments.length > 0 ? (
+                <View
+                  style={[styles.mathGroup, { borderTopColor: colors.border }]}
+                >
+                  <Text
+                    style={[styles.mathGroupLabel, { color: colors.mutedForeground }]}
+                  >
+                    Upcoming commitments
+                  </Text>
+                  {safeData.upcomingCommitments.map((c, i) => (
+                    <View key={`${c.description}-${i}`} style={styles.mathRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[styles.mathDesc, { color: colors.foreground }]}
+                          numberOfLines={1}
+                        >
+                          {c.description}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.mathMeta,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          due {dateLabel(c.dueDate)}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[styles.mathAmount, { color: colors.foreground }]}
+                      >
+                        −{format(c.amount)}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.mathRow}>
+                    <Text
+                      style={[styles.mathSubtotalLabel, { color: colors.mutedForeground }]}
+                    >
+                      Commitments total
+                    </Text>
+                    <Text
+                      style={[styles.mathSubtotalAmount, { color: colors.foreground }]}
+                    >
+                      −{format(safeData.upcomingCommitmentsTotal)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {safeData.goalBuffers.length > 0 ? (
+                <View
+                  style={[styles.mathGroup, { borderTopColor: colors.border }]}
+                >
+                  <Text
+                    style={[styles.mathGroupLabel, { color: colors.mutedForeground }]}
+                  >
+                    Goal buffers
+                  </Text>
+                  {safeData.goalBuffers.map((g, i) => (
+                    <View key={`${g.name}-${i}`} style={styles.mathRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[styles.mathDesc, { color: colors.foreground }]}
+                          numberOfLines={1}
+                        >
+                          {g.name}
+                        </Text>
+                        {g.deadline ? (
+                          <Text
+                            style={[
+                              styles.mathMeta,
+                              { color: colors.mutedForeground },
+                            ]}
+                          >
+                            by {dateLabel(g.deadline)}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Text
+                        style={[styles.mathAmount, { color: colors.foreground }]}
+                      >
+                        −{format(g.amount)}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={styles.mathRow}>
+                    <Text
+                      style={[styles.mathSubtotalLabel, { color: colors.mutedForeground }]}
+                    >
+                      Goal buffers total
+                    </Text>
+                    <Text
+                      style={[styles.mathSubtotalAmount, { color: colors.foreground }]}
+                    >
+                      −{format(safeData.goalBuffersTotal)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={[styles.mathTotalRow, { borderTopColor: colors.border }]}>
+                <Text style={[styles.mathTotalLabel, { color: colors.foreground }]}>
+                  Safe to spend
+                </Text>
+                <Text
+                  style={[
+                    styles.mathTotalAmount,
+                    {
+                      color: safeNegative
+                        ? colors.destructive
+                        : colors.foreground,
+                    },
+                  ]}
+                >
+                  {format(safeData.safeToSpend ?? 0)}
+                </Text>
+              </View>
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -775,6 +1068,136 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
+  },
+  safeSetup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  safeSetupIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  safeSetupTitle: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  safeSetupSub: {
+    fontSize: 12.5,
+    lineHeight: 17,
+    fontFamily: 'Outfit_400Regular',
+  },
+  safeLabel: {
+    fontSize: 12.5,
+    fontFamily: 'Outfit_500Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  safeAmount: {
+    fontSize: 38,
+    fontFamily: 'Outfit_700Bold',
+    letterSpacing: -0.8,
+    marginTop: 4,
+  },
+  safeSub: {
+    fontSize: 13.5,
+    fontFamily: 'Outfit_400Regular',
+    marginTop: 2,
+  },
+  safeWarn: {
+    fontSize: 13,
+    fontFamily: 'Outfit_600SemiBold',
+    marginTop: 10,
+  },
+  safePerDayPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  safePerDayText: {
+    fontSize: 12.5,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderTopWidth: 1,
+    marginTop: 14,
+    paddingTop: 12,
+  },
+  mathToggleText: {
+    flex: 1,
+    fontSize: 13.5,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathBody: {
+    marginTop: 10,
+    gap: 8,
+  },
+  mathRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  mathGroup: {
+    borderTopWidth: 1,
+    paddingTop: 10,
+    marginTop: 2,
+    gap: 8,
+  },
+  mathGroupLabel: {
+    fontSize: 11.5,
+    fontFamily: 'Outfit_500Medium',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  mathDesc: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+  },
+  mathMeta: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    marginTop: 1,
+  },
+  mathAmount: {
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathSubtotalLabel: {
+    flex: 1,
+    fontSize: 12.5,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathSubtotalAmount: {
+    fontSize: 12.5,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathTotalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    marginTop: 4,
+    paddingTop: 12,
+  },
+  mathTotalLabel: {
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  mathTotalAmount: {
+    fontSize: 18,
+    fontFamily: 'Outfit_700Bold',
+    letterSpacing: -0.4,
   },
   section: {
     gap: 10,

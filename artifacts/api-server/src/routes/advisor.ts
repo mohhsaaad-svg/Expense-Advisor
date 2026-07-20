@@ -16,6 +16,7 @@ import { getOrCreatePreferences } from "./preferences";
 import { listGoalsSerialized } from "./goals";
 import { listChallengesComputed, todayIso } from "./challenges";
 import { userId } from "../lib/user";
+import { computeSafeToSpend } from "../lib/safe-to-spend";
 
 const router = Router();
 
@@ -54,7 +55,7 @@ async function buildSystemPrompt(uid: string): Promise<string> {
   const today = todayIso();
   const monthStart = `${today.slice(0, 7)}-01`;
 
-  const [prefs, budgetRows, recent, monthCats, todayTotalRows, goals, challenges] = await Promise.all([
+  const [prefs, budgetRows, recent, monthCats, todayTotalRows, goals, challenges, sts] = await Promise.all([
     getOrCreatePreferences(uid),
     db.select().from(budgetTable).where(eq(budgetTable.userId, uid)).limit(1),
     db
@@ -75,7 +76,33 @@ async function buildSystemPrompt(uid: string): Promise<string> {
       .where(and(eq(expensesTable.userId, uid), eq(expensesTable.date, today))),
     listGoalsSerialized(uid),
     listChallengesComputed(uid, today),
+    computeSafeToSpend(uid, today),
   ]);
+
+  const fmt = (n: number) => n.toFixed(3);
+  const safeToSpendLines: string[] = sts.configured
+    ? [
+        "SAFE TO SPEND (server-computed, deterministic — this is the ONLY source of truth for 'safe to spend'; never recompute, adjust, or invent these figures):",
+        `- Safe to spend until payday (${sts.nextPayday}, ${sts.daysUntilPayday} day(s) away): ${fmt(sts.safeToSpend ?? 0)}`,
+        `- Math: salary ${fmt(sts.salary ?? 0)} (received ${sts.cycleStart}) − spent this cycle ${fmt(sts.spentThisCycle)} − upcoming committed charges ${fmt(sts.upcomingCommitmentsTotal)} − goal buffers ${fmt(sts.goalBuffersTotal)} = ${fmt(sts.safeToSpend ?? 0)}`,
+        ...(sts.upcomingCommitments.length
+          ? [
+              "- Committed before payday: " +
+                sts.upcomingCommitments.map((u) => `${u.description} ${fmt(u.amount)} on ${u.dueDate}`).join("; "),
+            ]
+          : []),
+        ...(sts.goalBuffers.length
+          ? [
+              "- Goal buffers this cycle: " +
+                sts.goalBuffers.map((b) => `${b.name} ${fmt(b.amount)}${b.deadline ? ` (by ${b.deadline})` : ""}`).join("; "),
+            ]
+          : []),
+        `- Safe per day until payday: ${fmt(sts.safePerDay ?? 0)}`,
+        "When asked about safe-to-spend, quote these exact figures and explain the math above. If a figure is not listed here, say you don't have it rather than estimating.",
+      ]
+    : [
+        "SAFE TO SPEND: not configured yet — the user has not set their salary amount and salary day in Budget settings. If asked, guide them to set it there; do not estimate a safe-to-spend number yourself.",
+      ];
 
   const cur = prefs.currency;
   const budget = budgetRows[0];
@@ -102,6 +129,8 @@ async function buildSystemPrompt(uid: string): Promise<string> {
       ? `BUDGET: daily limit ${Number(budget.dailyLimit).toFixed(2)}, monthly limit ${Number(budget.monthlyLimit).toFixed(2)}`
       : "BUDGET: not configured yet",
     `SPENT TODAY: ${todayTotal.toFixed(2)}`,
+    "",
+    ...safeToSpendLines,
     `THIS MONTH (since ${monthStart}): total ${monthTotal.toFixed(2)}${topCats ? `, by category: ${topCats}` : ""}`,
     "",
     "RECENT EXPENSES (newest first):",

@@ -7,6 +7,8 @@ import {
   getGetPreferencesQueryKey,
   useUpdatePreferences,
   getGetSpendingTipsQueryKey,
+  getGetSafeToSpendQueryKey,
+  type PreferencesInput,
 } from "@workspace/api-client-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,12 +19,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Flame, Save, ShieldCheck, Settings2 } from "lucide-react";
+import { Flame, Save, ShieldCheck, Settings2, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { currencySymbol } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
 import { useT, type Lang } from "@/lib/i18n";
+
+const emptyToNull = (v: unknown) => (v === "" || v === null || v === undefined ? null : v);
 
 const formSchema = z.object({
   dailyLimit: z.coerce.number().min(1, "Daily limit must be at least 1"),
@@ -93,6 +97,7 @@ export default function Budget() {
           queryClient.invalidateQueries({ queryKey: ["/api/expenses/summary/daily"] });
           queryClient.invalidateQueries({ queryKey: ["/api/insights/stats"] });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetSafeToSpendQueryKey() });
           toast({
             title: t("toast.settingsSaved.title"),
             description: t("toast.settingsSaved.desc"),
@@ -203,6 +208,7 @@ export default function Budget() {
                                 <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">{currencySymbol(currency)}</span>
                                 <Input
                                   type="number"
+                                  step="0.001"
                                   placeholder={t('budget.salaryOptional')}
                                   className="ps-10 h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
                                   data-testid="input-salary-amount"
@@ -311,6 +317,9 @@ const CURRENCIES = [
   { code: "INR", label: "Indian Rupee (₹)" },
   { code: "CAD", label: "Canadian Dollar (CA$)" },
   { code: "AUD", label: "Australian Dollar (A$)" },
+  { code: "JOD", label: "Jordanian Dinar (JOD)" },
+  { code: "KWD", label: "Kuwaiti Dinar (KD)" },
+  { code: "BHD", label: "Bahraini Dinar (BD)" },
 ] as const;
 
 type CurrencyCode = (typeof CURRENCIES)[number]["code"];

@@ -26,6 +26,7 @@ import {
   getGetBudgetQueryKey,
   getGetDailySummaryQueryKey,
   getGetPreferencesQueryKey,
+  getGetSafeToSpendQueryKey,
   getGetSpendingStatsQueryKey,
   getGetSpendingTipsQueryKey,
   getListExpensesQueryKey,
@@ -37,11 +38,23 @@ import {
   useUpdatePreferences,
   useUpdateRecurringExpense,
 } from '@workspace/api-client-react';
+import type { PreferencesInput } from '@workspace/api-client-react';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 
-const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD'] as const;
+const CURRENCY_OPTIONS = [
+  'USD',
+  'EUR',
+  'GBP',
+  'JPY',
+  'INR',
+  'CAD',
+  'AUD',
+  'JOD',
+  'KWD',
+  'BHD',
+] as const;
 type CurrencyOption = (typeof CURRENCY_OPTIONS)[number];
 
 const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
@@ -171,6 +184,9 @@ export default function BudgetScreen() {
           });
           queryClient.invalidateQueries({
             queryKey: getGetSpendingStatsQueryKey(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: getGetSafeToSpendQueryKey(),
           });
           setDailyDraft(null);
           setMonthlyDraft(null);
@@ -500,6 +516,7 @@ export default function BudgetScreen() {
               </Text>
             </View>
           ) : null}
+
         </>
       )}
 
