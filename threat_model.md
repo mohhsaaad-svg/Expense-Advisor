@@ -2,54 +2,63 @@
 
 ## Project Overview
 
-A Node.js/Express 5 daily expense tracker API with a React frontend. The backend stores expenses and budget limits in PostgreSQL via Drizzle ORM. Input is validated with Zod schemas generated from an OpenAPI spec. The project is not yet deployed but the API server is production-capable.
+Ember is a multi-user daily expense tracker. An Express 5 API server (`artifacts/api-server`) persists each user's expenses, budgets, preferences, recurring rules, savings goals, no-spend challenges, and AI-coach conversations in PostgreSQL via Drizzle ORM. A React/Vite web app and an Expo mobile app consume the same API. Input is validated with Zod schemas generated from an OpenAPI spec.
 
-**Tech stack:** Node.js 24 / TypeScript 5.9, Express 5, PostgreSQL + Drizzle ORM, Zod v4, esbuild.
+**Tech stack:** Node.js 24 / TypeScript 5.9, Express 5, PostgreSQL + Drizzle ORM, Zod, esbuild.
 
-**Users:** Single-user personal finance app (no multi-tenancy evident in the schema).
+**Users:** Multi-tenant. Every account authenticates through Replit Auth (OIDC) and sees only its own data. There is no admin/superuser role — all authenticated principals have identical, self-scoped privileges.
 
 ## Assets
 
-- **Expense records** — amounts, categories, descriptions, and dates stored in PostgreSQL. Disclosure or modification affects personal financial privacy.
-- **Budget configuration** — daily and monthly spending limits. Tampering can silently neutralize budget controls.
-- **Database connection** — `DATABASE_URL` environment variable. Compromise gives full database access.
+- **Per-user financial records** — expenses, budgets, recurring rules, goals, challenges (amounts, categories, descriptions, dates). Disclosure or modification across users is the primary privacy risk this model defends against.
+- **AI-coach conversations & messages** — free-text chat history grounded in the user's finances; must never leak across users.
+- **Sessions** — the `sessions` table holds OIDC session state (access/refresh tokens). Theft of a session id (`sid`) impersonates the user.
+- **Database connection** — `DATABASE_URL`. Compromise gives full cross-user database access.
 
 ## Trust Boundaries
 
-- **Browser → API** — All client requests cross this boundary. Currently no authentication is enforced at the API layer; every endpoint is publicly reachable.
-- **API → PostgreSQL** — Drizzle ORM with parameterized queries; the DB connection string is held in the environment.
-- **Public / Authenticated** — No boundary currently exists. All routes under `/api` are unauthenticated.
+- **Browser/mobile → API** — All client requests cross this boundary. `authMiddleware` resolves a session from the `sid` (cookie or `Authorization: Bearer`); `requireAuth` rejects anonymous callers with 401 before any data route runs.
+- **Authenticated user → another user's data** — The core boundary of this app. Enforced in every data query by an owner predicate (`user_id = <caller>`); it is never derived from client input.
+- **API → PostgreSQL** — Drizzle ORM with parameterized queries; ownership FKs (`ON DELETE CASCADE`) keep orphaned rows from outliving their owner.
 
 ## Scan Anchors
 
 - **Production entry point:** `artifacts/api-server/src/app.ts` → `artifacts/api-server/src/routes/`
-- **Highest-risk routes:** `artifacts/api-server/src/routes/expenses.ts`, `artifacts/api-server/src/routes/budget.ts`
-- **DB layer:** `lib/db/src/index.ts`, `lib/db/src/schema/`
-- **Frontend (dev/canvas):** `artifacts/expense-tracker/`, `artifacts/mockup-sandbox/` — UI only; no server-side logic
-- **All API routes are public** — no authentication middleware exists anywhere
+- **AuthN/AuthZ:** `artifacts/api-server/src/middlewares/authMiddleware.ts` (session resolution), `middlewares/requireAuth.ts` (401 gate), `src/lib/auth.ts` (session store), `src/lib/user.ts` (`userId(req)` — the single source of the caller's id)
+- **Ownership-scoped routes:** every file in `artifacts/api-server/src/routes/` except `health.ts` — each read/write filters by `userId`
+- **DB layer:** `lib/db/src/index.ts`, `lib/db/src/schema/` — every domain table carries `user_id` NOT NULL → `users.id`
+- **Money math:** `artifacts/api-server/src/lib/money.ts` — integer-cent aggregation
+- **Frontend (dev/canvas):** `artifacts/expense-tracker/`, `artifacts/mobile/`, `artifacts/mockup-sandbox/` — clients only; no authority over ownership
 
 ## Threat Categories
 
 ### Spoofing / Authentication
 
-No authentication middleware is present in the Express application (`app.ts`). Every endpoint under `/api/expenses`, `/api/budget`, and `/api/insights` is reachable without credentials. Any party who can reach the server can read all expenses, modify budget limits, or delete all records.
+`requireAuth` is mounted ahead of all data routers, so every endpoint under `/api` (except health) returns 401 without a valid session. Sessions are looked up server-side by `sid`; expired sessions are deleted and rejected. Session ids are 256-bit random values. There is no unauthenticated data path.
 
-**Required guarantee:** All mutating and data-reading endpoints MUST require a valid authentication token before serving data.
+**Guarantee:** No expense, budget, insight, goal, challenge, or conversation data is served without an authenticated session.
 
-### Tampering
+### Tampering / Authorization (primary risk)
 
-CORS is configured with `cors()` and no options, which defaults to `Access-Control-Allow-Origin: *`. Any origin on the internet can issue cross-origin requests to the API. Without CSRF-resistant authentication (e.g., token in Authorization header), browser requests from malicious pages could reach the API using the user's browser context.
+Every query is scoped to the authenticated owner via `user_id = userId(req)` in the `WHERE` clause; `userId` comes only from the server-resolved session, never from a request body, param, or header. Object-level access to another user's row (read, update, delete, goal contribution, challenge deletion, conversation message) returns **404 Not Found** — indistinguishable from a row that does not exist, so the API does not confirm the existence of other users' records. Cross-user writes therefore cannot target another user's row id.
 
-The `PUT /api/budget` handler calls `db.update(budgetTable).set({...})` with no `.where()` clause, meaning every budget row in the table is updated on each write (a logic bug with data-integrity implications).
+The earlier `PUT /api/budget` defect (an `UPDATE` with no `WHERE`, which rewrote every row) is resolved: budget and preferences are per-user get-or-create rows (unique index on `user_id`, `onConflictDoNothing` + re-read to stay race-safe) and every mutation is scoped to the caller's own row.
 
 ### Information Disclosure
 
-All expense data (amounts, categories, descriptions) is returned to any caller with no authorization check. For a personal finance app this constitutes a privacy violation if the server is internet-reachable.
+List endpoints return only the caller's rows. Insight aggregates (daily/weekly/stats/tips) are computed exclusively over the caller's expenses. Error responses for foreign objects are 404, avoiding an oracle that would reveal other users' record ids. Auth headers/cookies are redacted in logs.
 
 ### Denial of Service
 
-No rate limiting exists on any endpoint. The `GET /expenses` route performs a full table scan with optional filters; an attacker can issue an unbounded number of requests, stressing both the Express process and the PostgreSQL connection pool.
+`express-rate-limit` caps requests at 100/min/IP globally and the AI-coach message route at 10/min (the only route that triggers an outbound model call). List/aggregate queries are index-backed (`(user_id, date)` and per-owner indexes). The coach route also enforces a per-message character cap and a bounded history budget before calling the model.
 
 ### Elevation of Privilege
 
-No role or permission model is defined. With no authentication, elevation is moot — every caller already has full access.
+No roles exist; every authenticated user is confined to their own data and no endpoint grants cross-user or administrative reach. There is no code path that widens a caller's scope beyond `userId(req)`.
+
+## Residual Risks & Assumptions
+
+- **Session-id theft** (XSS, token exfiltration) impersonates a user. Mitigations: same-origin CORS with credentials, auth headers redacted from logs, short-lived OIDC access tokens with server-side refresh. Client-side XSS hardening is out of scope for this model.
+- **`DATABASE_URL` compromise** bypasses all application-layer isolation. Treated as an infrastructure/secret-management concern.
+- **Shared-IP rate limiting** — behind the Replit proxy, `trust proxy` is set to one hop; many users behind one NATed IP share the global bucket. Acceptable for current scale.
+- **New tables/routes must opt in** — isolation is enforced per query, not by a global filter. Any future domain table must add a `user_id` FK and every new query must include the owner predicate; the test suite in `src/test/` is the regression guard for this.

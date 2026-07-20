@@ -2,6 +2,7 @@ import { Router } from "express";
 import { and, asc, count, eq, gte, lte } from "drizzle-orm";
 import { db, challengesTable, expensesTable, type ChallengeRow } from "@workspace/db";
 import { CreateChallengeBody, DeleteChallengeParams } from "@workspace/api-zod";
+import { userId } from "../lib/user";
 
 const router = Router();
 
@@ -21,12 +22,18 @@ function diffDays(a: string, b: string): number {
   return Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
 }
 
+// Violations only count the CHALLENGE OWNER's expenses (row.userId) — another
+// user's coffee can never fail this user's no-spend challenge.
 async function countViolations(row: ChallengeRow, today: string): Promise<number> {
   const endDate = addDays(row.startDate, row.durationDays - 1);
   const windowEnd = today < endDate ? today : endDate;
   if (windowEnd < row.startDate) return 0;
 
-  const conditions = [gte(expensesTable.date, row.startDate), lte(expensesTable.date, windowEnd)];
+  const conditions = [
+    eq(expensesTable.userId, row.userId),
+    gte(expensesTable.date, row.startDate),
+    lte(expensesTable.date, windowEnd),
+  ];
   if (row.category !== null) conditions.push(eq(expensesTable.category, row.category));
   const [result] = await db
     .select({ violations: count() })
@@ -55,10 +62,11 @@ async function serializeChallenge(row: ChallengeRow, today: string) {
   };
 }
 
-export async function listChallengesComputed(today: string) {
+export async function listChallengesComputed(uid: string, today: string) {
   const rows = await db
     .select()
     .from(challengesTable)
+    .where(eq(challengesTable.userId, uid))
     .orderBy(asc(challengesTable.startDate), asc(challengesTable.id));
   return Promise.all(rows.map((row) => serializeChallenge(row, today)));
 }
@@ -67,7 +75,7 @@ export async function listChallengesComputed(today: string) {
 router.get("/challenges", async (req, res): Promise<void> => {
   const q = req.query.today;
   const today = typeof q === "string" && ISO_DATE.test(q) ? q : todayIso();
-  res.json(await listChallengesComputed(today));
+  res.json(await listChallengesComputed(userId(req), today));
 });
 
 // POST /challenges
@@ -85,6 +93,7 @@ router.post("/challenges", async (req, res): Promise<void> => {
   const [created] = await db
     .insert(challengesTable)
     .values({
+      userId: userId(req),
       name: body.data.name,
       category: body.data.category ?? null,
       startDate: body.data.startDate ?? todayIso(),
@@ -102,7 +111,10 @@ router.delete("/challenges/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid challenge id" });
     return;
   }
-  const deleted = await db.delete(challengesTable).where(eq(challengesTable.id, params.data.id)).returning();
+  const deleted = await db
+    .delete(challengesTable)
+    .where(and(eq(challengesTable.id, params.data.id), eq(challengesTable.userId, userId(req))))
+    .returning();
   if (deleted.length === 0) {
     res.status(404).json({ error: "Challenge not found" });
     return;

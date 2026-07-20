@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db, goalsTable, type GoalRow } from "@workspace/db";
 import {
   CreateGoalBody,
@@ -9,6 +9,7 @@ import {
   ContributeToGoalBody,
   ContributeToGoalParams,
 } from "@workspace/api-zod";
+import { userId } from "../lib/user";
 
 const router = Router();
 
@@ -23,14 +24,18 @@ function serializeGoal(g: GoalRow) {
   };
 }
 
-export async function listGoalsSerialized() {
-  const rows = await db.select().from(goalsTable).orderBy(asc(goalsTable.createdAt), asc(goalsTable.id));
+export async function listGoalsSerialized(uid: string) {
+  const rows = await db
+    .select()
+    .from(goalsTable)
+    .where(eq(goalsTable.userId, uid))
+    .orderBy(asc(goalsTable.createdAt), asc(goalsTable.id));
   return rows.map(serializeGoal);
 }
 
 // GET /goals
 router.get("/goals", async (req, res): Promise<void> => {
-  res.json(await listGoalsSerialized());
+  res.json(await listGoalsSerialized(userId(req)));
 });
 
 // POST /goals
@@ -48,6 +53,7 @@ router.post("/goals", async (req, res): Promise<void> => {
   const [created] = await db
     .insert(goalsTable)
     .values({
+      userId: userId(req),
       name: body.data.name,
       targetAmount: String(body.data.targetAmount),
       deadline: body.data.deadline ?? null,
@@ -58,6 +64,7 @@ router.post("/goals", async (req, res): Promise<void> => {
 
 // PATCH /goals/:id
 router.patch("/goals/:id", async (req, res): Promise<void> => {
+  const uid = userId(req);
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateGoalParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -74,7 +81,10 @@ router.patch("/goals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [existing] = await db.select().from(goalsTable).where(eq(goalsTable.id, params.data.id));
+  const [existing] = await db
+    .select()
+    .from(goalsTable)
+    .where(and(eq(goalsTable.id, params.data.id), eq(goalsTable.userId, uid)));
   if (!existing) {
     res.status(404).json({ error: "Goal not found" });
     return;
@@ -90,7 +100,11 @@ router.patch("/goals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [updated] = await db.update(goalsTable).set(set).where(eq(goalsTable.id, params.data.id)).returning();
+  const [updated] = await db
+    .update(goalsTable)
+    .set(set)
+    .where(and(eq(goalsTable.id, params.data.id), eq(goalsTable.userId, uid)))
+    .returning();
   res.json(serializeGoal(updated));
 });
 
@@ -102,7 +116,10 @@ router.delete("/goals/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid goal id" });
     return;
   }
-  const deleted = await db.delete(goalsTable).where(eq(goalsTable.id, params.data.id)).returning();
+  const deleted = await db
+    .delete(goalsTable)
+    .where(and(eq(goalsTable.id, params.data.id), eq(goalsTable.userId, userId(req))))
+    .returning();
   if (deleted.length === 0) {
     res.status(404).json({ error: "Goal not found" });
     return;
@@ -134,7 +151,7 @@ router.post("/goals/:id/contribute", async (req, res): Promise<void> => {
     .set({
       savedAmount: sql`GREATEST(0, ${goalsTable.savedAmount} + ${body.data.amount.toFixed(2)}::numeric)`,
     })
-    .where(eq(goalsTable.id, params.data.id))
+    .where(and(eq(goalsTable.id, params.data.id), eq(goalsTable.userId, userId(req))))
     .returning();
   if (!updated) {
     res.status(404).json({ error: "Goal not found" });

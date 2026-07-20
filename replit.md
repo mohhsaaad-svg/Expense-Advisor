@@ -24,7 +24,9 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 ## Where things live
 
 - API contract (source of truth): `lib/api-spec/openapi.yaml`
-- DB schema: `lib/db/src/schema/` (expenses, budget, recurring_expenses, preferences, users/sessions for auth)
+- DB schema: `lib/db/src/schema/` (expenses, budget, recurring_expenses, preferences, goals, challenges, conversations/messages, users/sessions for auth) — every domain table carries a `user_id` NOT NULL FK → `users.id` (`ON DELETE CASCADE`)
+- Server helpers: `artifacts/api-server/src/lib/user.ts` (`userId(req)` — caller id from the session), `src/lib/money.ts` (integer-cent aggregation)
+- API tests: `artifacts/api-server/src/test/` (vitest + supertest; `pnpm --filter @workspace/api-server run test`) — isolation matrix + insights math against the dev DB
 - API routes: `artifacts/api-server/src/routes/` (expenses, budget, recurring, preferences, insights, advisor, goals, challenges, auth, health); recurrence date math in `src/lib/recurrence.ts`
 - Auth middleware: `artifacts/api-server/src/middlewares/`; frontend hook: `lib/replit-auth-web` (`useAuth`)
 - Frontend pages: `artifacts/expense-tracker/src/pages/` (Dashboard `/`, Expenses `/expenses`, Rituals `/recurring`, Budget `/budget`, Goals `/goals`, Coach `/coach`)
@@ -33,6 +35,9 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 ## Architecture decisions
 
 - All expense/budget/insights endpoints require a Replit Auth session; CORS restricted to app origins with credentials
+- Per-user data isolation: every data query is scoped to `userId(req)` (from the server-resolved session, never client input); cross-user reads/writes return **404** (indistinguishable from missing) rather than 403, so the API never confirms another user's record ids. Any new domain table must add a `user_id` FK and every new query must include the owner predicate
+- Server money math runs in integer cents (`lib/money.ts`) to avoid float drift; amounts still cross the API boundary as `numeric(10,2)` strings parsed to numbers
+- Budget & preferences are per-user get-or-create rows guarded by a unique index on `user_id` + `onConflictDoNothing` + re-read (race-safe); mutations scoped to the caller's own row
 - Budget is a single-row table (get-or-create pattern); PUT scoped to the fetched row id
 - Tips/alerts are computed server-side in `insights.ts` from actual spending vs budget (80%/100% daily thresholds, 90% monthly)
 - Amounts stored as `numeric(10,2)` strings in Postgres, parsed to numbers at the API boundary
@@ -68,6 +73,7 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - Express 5: parse `req.params.id` (may be `string | string[]`), annotate async handlers `Promise<void>`
 - Never use `console.log` in server code — use `req.log` / `logger` (pino)
 - OAuth sign-in cannot complete inside the preview iframe (CSP `frame-ancestors` + Google refusing iframes) — `lib/replit-auth-web` opens login in a new top-level tab when embedded and re-fetches the session on focus; don't "simplify" that away
+- Schema rollout order: apply `lib/db/migrations/*.sql` to the target DB **before** publishing — the API server refuses to boot if `user_id` columns are missing (`src/lib/schemaCheck.ts`), and the migration resolves the backfill owner itself (sole user, or `SET ember.migration_owner`; fails fast when ambiguous)
 
 ## Pointers
 

@@ -10,6 +10,7 @@ import {
   DeleteExpenseParams,
 } from "@workspace/api-zod";
 import { materializeDueRecurring, toDateString } from "../lib/recurrence";
+import { userId } from "../lib/user";
 
 const router = Router();
 
@@ -29,22 +30,23 @@ function serialize(e: ExpenseRow) {
 
 // GET /expenses
 router.get("/expenses", async (req, res): Promise<void> => {
+  const uid = userId(req);
   const query = ListExpensesQueryParams.safeParse(req.query);
   if (!query.success) {
     res.status(400).json({ error: query.error.message });
     return;
   }
 
-  // Auto-log any recurring expenses that have come due before listing.
+  // Auto-log this user's recurring expenses that have come due before listing.
   try {
-    await materializeDueRecurring(toDateString(new Date()));
+    await materializeDueRecurring(uid, toDateString(new Date()));
   } catch (err) {
     req.log.error({ err }, "recurring materialization failed");
   }
 
   const { startDate, endDate, category } = query.data;
 
-  const conditions = [];
+  const conditions = [eq(expensesTable.userId, uid)];
   if (startDate) conditions.push(gte(expensesTable.date, startDate));
   if (endDate) conditions.push(lte(expensesTable.date, endDate));
   if (category) conditions.push(eq(expensesTable.category, category));
@@ -52,7 +54,7 @@ router.get("/expenses", async (req, res): Promise<void> => {
   const expenses = await db
     .select()
     .from(expensesTable)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(expensesTable.date);
 
   res.json(expenses.map(serialize));
@@ -69,6 +71,7 @@ router.post("/expenses", async (req, res): Promise<void> => {
   const [created] = await db
     .insert(expensesTable)
     .values({
+      userId: userId(req),
       amount: body.data.amount.toString(),
       category: body.data.category,
       description: body.data.description,
@@ -79,7 +82,8 @@ router.post("/expenses", async (req, res): Promise<void> => {
   res.status(201).json(serialize(created));
 });
 
-// GET /expenses/:id
+// GET /expenses/:id — someone else's expense is indistinguishable from a
+// missing one (404), so ids can't be probed across accounts.
 router.get("/expenses/:id", async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = GetExpenseParams.safeParse({ id: parseInt(raw, 10) });
@@ -91,7 +95,7 @@ router.get("/expenses/:id", async (req, res): Promise<void> => {
   const [expense] = await db
     .select()
     .from(expensesTable)
-    .where(eq(expensesTable.id, params.data.id));
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId(req))));
 
   if (!expense) {
     res.status(404).json({ error: "Expense not found" });
@@ -125,7 +129,7 @@ router.patch("/expenses/:id", async (req, res): Promise<void> => {
   const [updated] = await db
     .update(expensesTable)
     .set(updates)
-    .where(eq(expensesTable.id, params.data.id))
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId(req))))
     .returning();
 
   if (!updated) {
@@ -147,7 +151,7 @@ router.delete("/expenses/:id", async (req, res): Promise<void> => {
 
   const [deleted] = await db
     .delete(expensesTable)
-    .where(eq(expensesTable.id, params.data.id))
+    .where(and(eq(expensesTable.id, params.data.id), eq(expensesTable.userId, userId(req))))
     .returning();
 
   if (!deleted) {

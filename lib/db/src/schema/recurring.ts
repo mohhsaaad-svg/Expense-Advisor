@@ -1,21 +1,29 @@
-import { pgTable, serial, text, numeric, date, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, numeric, date, timestamp, boolean, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { usersTable } from "./auth";
 
-export const recurringExpensesTable = pgTable("recurring_expenses", {
-  id: serial("id").primaryKey(),
-  description: text("description").notNull(),
-  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
-  category: text("category").notNull(),
-  // daily | weekly | monthly
-  frequency: text("frequency").notNull(),
-  // Anchor date: first occurrence; weekly repeats on this weekday, monthly on this day-of-month (clamped)
-  startDate: date("start_date").notNull(),
-  active: boolean("active").notNull().default(true),
-  // High-water mark for materialization (occurrences up to this date have been generated)
-  lastMaterializedDate: date("last_materialized_date"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const recurringExpensesTable = pgTable(
+  "recurring_expenses",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    description: text("description").notNull(),
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    category: text("category").notNull(),
+    // daily | weekly | monthly
+    frequency: text("frequency").notNull(),
+    // Anchor date: first occurrence; weekly repeats on this weekday, monthly on this day-of-month (clamped)
+    startDate: date("start_date").notNull(),
+    active: boolean("active").notNull().default(true),
+    // High-water mark for materialization (occurrences up to this date have been generated)
+    lastMaterializedDate: date("last_materialized_date"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("recurring_user_idx").on(table.userId)],
+);
 
 export const insertRecurringExpenseSchema = createInsertSchema(recurringExpensesTable).omit({
   id: true,

@@ -1,13 +1,22 @@
-import { pgTable, serial, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, numeric, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { usersTable } from "./auth";
 
-export const budgetTable = pgTable("budget", {
-  id: serial("id").primaryKey(),
-  dailyLimit: numeric("daily_limit", { precision: 10, scale: 2 }).notNull().default("100"),
-  monthlyLimit: numeric("monthly_limit", { precision: 10, scale: 2 }).notNull().default("2000"),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+// One budget row per user (get-or-create keyed by user_id).
+export const budgetTable = pgTable(
+  "budget",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    dailyLimit: numeric("daily_limit", { precision: 10, scale: 2 }).notNull().default("100"),
+    monthlyLimit: numeric("monthly_limit", { precision: 10, scale: 2 }).notNull().default("2000"),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("budget_user_uq").on(table.userId)],
+);
 
 export const insertBudgetSchema = createInsertSchema(budgetTable).omit({ id: true, updatedAt: true });
 export type InsertBudget = z.infer<typeof insertBudgetSchema>;

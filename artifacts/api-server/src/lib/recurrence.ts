@@ -69,17 +69,24 @@ export function occurrencesBetween(
 }
 
 /**
- * Generate expenses for every active recurring rule up to `upTo` (inclusive).
+ * Generate expenses for every active recurring rule OWNED BY `userId`, up to
+ * `upTo` (inclusive). Materialization is strictly per-user: rules are
+ * filtered by owner and every generated expense inherits the rule owner's
+ * user_id, so one user's read can never create or touch another's data.
  * Idempotent: inserts use ON CONFLICT DO NOTHING against the unique
  * (recurring_id, date) index, and each rule tracks a high-water mark.
  * Returns the number of occurrences generated.
  */
-export async function materializeDueRecurring(upTo: string): Promise<number> {
+export async function materializeDueRecurring(userId: string, upTo: string): Promise<number> {
   const rules = await db
     .select()
     .from(recurringExpensesTable)
     .where(
-      and(eq(recurringExpensesTable.active, true), lte(recurringExpensesTable.startDate, upTo)),
+      and(
+        eq(recurringExpensesTable.userId, userId),
+        eq(recurringExpensesTable.active, true),
+        lte(recurringExpensesTable.startDate, upTo),
+      ),
     );
 
   const CAP = 366;
@@ -101,6 +108,7 @@ export async function materializeDueRecurring(upTo: string): Promise<number> {
         .insert(expensesTable)
         .values(
           occurrences.map((date) => ({
+            userId: rule.userId,
             amount: rule.amount,
             category: rule.category,
             description: rule.description,

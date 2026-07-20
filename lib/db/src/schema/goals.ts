@@ -1,16 +1,24 @@
-import { pgTable, serial, text, numeric, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, numeric, date, timestamp, varchar, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { usersTable } from "./auth";
 
-export const goalsTable = pgTable("goals", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  targetAmount: numeric("target_amount", { precision: 10, scale: 2 }).notNull(),
-  savedAmount: numeric("saved_amount", { precision: 10, scale: 2 }).notNull().default("0"),
-  // Optional target date for the goal (YYYY-MM-DD)
-  deadline: date("deadline"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const goalsTable = pgTable(
+  "goals",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    targetAmount: numeric("target_amount", { precision: 10, scale: 2 }).notNull(),
+    savedAmount: numeric("saved_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+    // Optional target date for the goal (YYYY-MM-DD)
+    deadline: date("deadline"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("goals_user_idx").on(table.userId)],
+);
 
 export const insertGoalSchema = createInsertSchema(goalsTable).omit({ id: true, createdAt: true });
 export type InsertGoal = z.infer<typeof insertGoalSchema>;

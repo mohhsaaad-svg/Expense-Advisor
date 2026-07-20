@@ -65,13 +65,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
 
 // Global rate limit: caps request volume per client IP so a flood cannot
-// exhaust the shared database connection pool.
+// exhaust the shared database connection pool. Skipped under test, where the
+// whole suite shares one loopback IP and would otherwise trip the limit.
 app.use(
   rateLimit({
     windowMs: 60_000,
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test",
   }),
 );
 

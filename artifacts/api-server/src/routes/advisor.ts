@@ -1,6 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { and, asc, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, conversations, messages, expensesTable, budgetTable } from "@workspace/db";
 import {
   CreateAnthropicConversationBody,
@@ -15,6 +15,7 @@ import { logger } from "../lib/logger";
 import { getOrCreatePreferences } from "./preferences";
 import { listGoalsSerialized } from "./goals";
 import { listChallengesComputed, todayIso } from "./challenges";
+import { userId } from "../lib/user";
 
 const router = Router();
 
@@ -46,32 +47,34 @@ function serializeMessage(m: {
   };
 }
 
-// Builds the system prompt from the user's live data: budget, recent
-// expenses, month-to-date spending, goals, and challenges. The advisor is a
-// coach grounded in real numbers — never generic financial advice.
-async function buildSystemPrompt(): Promise<string> {
+// Builds the system prompt from ONE user's live data: budget, recent
+// expenses, month-to-date spending, goals, and challenges. Every query below
+// is scoped to `uid` — the advisor must never see another user's numbers.
+async function buildSystemPrompt(uid: string): Promise<string> {
   const today = todayIso();
   const monthStart = `${today.slice(0, 7)}-01`;
 
   const [prefs, budgetRows, recent, monthCats, todayTotalRows, goals, challenges] = await Promise.all([
-    getOrCreatePreferences(),
-    db.select().from(budgetTable).limit(1),
+    getOrCreatePreferences(uid),
+    db.select().from(budgetTable).where(eq(budgetTable.userId, uid)).limit(1),
     db
       .select()
       .from(expensesTable)
+      .where(eq(expensesTable.userId, uid))
       .orderBy(desc(expensesTable.date), desc(expensesTable.id))
       .limit(25),
     db
       .select({ category: expensesTable.category, total: sql<string>`sum(${expensesTable.amount})` })
       .from(expensesTable)
-      .where(gte(expensesTable.date, monthStart))
+      // Bounded on both ends: future-dated entries shouldn't inflate month-to-date.
+      .where(and(eq(expensesTable.userId, uid), gte(expensesTable.date, monthStart), lte(expensesTable.date, today)))
       .groupBy(expensesTable.category),
     db
       .select({ total: sql<string>`coalesce(sum(${expensesTable.amount}), 0)` })
       .from(expensesTable)
-      .where(eq(expensesTable.date, today)),
-    listGoalsSerialized(),
-    listChallengesComputed(today),
+      .where(and(eq(expensesTable.userId, uid), eq(expensesTable.date, today))),
+    listGoalsSerialized(uid),
+    listChallengesComputed(uid, today),
   ]);
 
   const cur = prefs.currency;
@@ -127,7 +130,11 @@ async function buildSystemPrompt(): Promise<string> {
 
 // GET /anthropic/conversations
 router.get("/anthropic/conversations", async (req, res): Promise<void> => {
-  const rows = await db.select().from(conversations).orderBy(desc(conversations.createdAt), desc(conversations.id));
+  const rows = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.userId, userId(req)))
+    .orderBy(desc(conversations.createdAt), desc(conversations.id));
   res.json(rows.map(serializeConversation));
 });
 
@@ -138,7 +145,10 @@ router.post("/anthropic/conversations", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [created] = await db.insert(conversations).values({ title: body.data.title }).returning();
+  const [created] = await db
+    .insert(conversations)
+    .values({ userId: userId(req), title: body.data.title })
+    .returning();
   res.status(201).json(serializeConversation(created));
 });
 
@@ -150,7 +160,10 @@ router.get("/anthropic/conversations/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Conversation not found" });
     return;
   }
-  const [convo] = await db.select().from(conversations).where(eq(conversations.id, params.data.id));
+  const [convo] = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.id, params.data.id), eq(conversations.userId, userId(req))));
   if (!convo) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -171,7 +184,10 @@ router.delete("/anthropic/conversations/:id", async (req, res): Promise<void> =>
     res.status(404).json({ error: "Conversation not found" });
     return;
   }
-  const deleted = await db.delete(conversations).where(eq(conversations.id, params.data.id)).returning();
+  const deleted = await db
+    .delete(conversations)
+    .where(and(eq(conversations.id, params.data.id), eq(conversations.userId, userId(req))))
+    .returning();
   if (deleted.length === 0) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -187,10 +203,20 @@ router.get("/anthropic/conversations/:id/messages", async (req, res): Promise<vo
     res.status(404).json({ error: "Conversation not found" });
     return;
   }
+  // Ownership gate first: messages are only reachable through a conversation
+  // the requester owns. Foreign conversation ids read as 404, same as missing.
+  const [convo] = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.id, params.data.id), eq(conversations.userId, userId(req))));
+  if (!convo) {
+    res.status(404).json({ error: "Conversation not found" });
+    return;
+  }
   const msgs = await db
     .select()
     .from(messages)
-    .where(eq(messages.conversationId, params.data.id))
+    .where(eq(messages.conversationId, convo.id))
     .orderBy(asc(messages.createdAt), asc(messages.id));
   res.json(msgs.map(serializeMessage));
 });
@@ -203,6 +229,7 @@ const advisorLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many advisor requests — please slow down for a minute." },
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 // POST /anthropic/conversations/:id/messages — SSE stream of the reply
@@ -228,7 +255,10 @@ router.post("/anthropic/conversations/:id/messages", advisorLimiter, async (req,
     return;
   }
 
-  const [convo] = await db.select().from(conversations).where(eq(conversations.id, params.data.id));
+  const [convo] = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.id, params.data.id), eq(conversations.userId, userId(req))));
   if (!convo) {
     res.status(404).json({ error: "Conversation not found" });
     return;
@@ -250,7 +280,7 @@ router.post("/anthropic/conversations/:id/messages", advisorLimiter, async (req,
   let history: Array<{ role: string; content: string }>;
   try {
     [systemPrompt, history] = await Promise.all([
-      buildSystemPrompt(),
+      buildSystemPrompt(userId(req)),
       db
         .select()
         .from(messages)

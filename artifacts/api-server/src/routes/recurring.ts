@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, recurringExpensesTable } from "@workspace/db";
 import {
   CreateRecurringExpenseBody,
@@ -8,6 +8,7 @@ import {
   DeleteRecurringExpenseParams,
 } from "@workspace/api-zod";
 import { addDays, materializeDueRecurring, toDateString } from "../lib/recurrence";
+import { userId } from "../lib/user";
 
 const router = Router();
 
@@ -32,12 +33,14 @@ router.get("/recurring", async (req, res): Promise<void> => {
   const rules = await db
     .select()
     .from(recurringExpensesTable)
+    .where(eq(recurringExpensesTable.userId, userId(req)))
     .orderBy(recurringExpensesTable.createdAt);
   res.json(rules.map(serialize));
 });
 
 // POST /recurring
 router.post("/recurring", async (req, res): Promise<void> => {
+  const uid = userId(req);
   const body = CreateRecurringExpenseBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
@@ -47,6 +50,7 @@ router.post("/recurring", async (req, res): Promise<void> => {
   const [created] = await db
     .insert(recurringExpensesTable)
     .values({
+      userId: uid,
       description: body.data.description,
       amount: body.data.amount.toString(),
       category: body.data.category,
@@ -59,7 +63,7 @@ router.post("/recurring", async (req, res): Promise<void> => {
   // Backfill occurrences from startDate through today right away so the
   // ledger and counters update without waiting for the next read.
   try {
-    await materializeDueRecurring(toDateString(new Date()));
+    await materializeDueRecurring(uid, toDateString(new Date()));
   } catch (err) {
     req.log.error({ err }, "materialization after create failed");
   }
@@ -67,13 +71,14 @@ router.post("/recurring", async (req, res): Promise<void> => {
   const [fresh] = await db
     .select()
     .from(recurringExpensesTable)
-    .where(eq(recurringExpensesTable.id, created.id));
+    .where(and(eq(recurringExpensesTable.id, created.id), eq(recurringExpensesTable.userId, uid)));
 
   res.status(201).json(serialize(fresh ?? created));
 });
 
 // PATCH /recurring/:id
 router.patch("/recurring/:id", async (req, res): Promise<void> => {
+  const uid = userId(req);
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateRecurringExpenseParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -90,7 +95,7 @@ router.patch("/recurring/:id", async (req, res): Promise<void> => {
   const [existing] = await db
     .select()
     .from(recurringExpensesTable)
-    .where(eq(recurringExpensesTable.id, params.data.id));
+    .where(and(eq(recurringExpensesTable.id, params.data.id), eq(recurringExpensesTable.userId, uid)));
   if (!existing) {
     res.status(404).json({ error: "Recurring expense not found" });
     return;
@@ -116,11 +121,11 @@ router.patch("/recurring/:id", async (req, res): Promise<void> => {
   const [updated] = await db
     .update(recurringExpensesTable)
     .set(updates)
-    .where(eq(recurringExpensesTable.id, params.data.id))
+    .where(and(eq(recurringExpensesTable.id, params.data.id), eq(recurringExpensesTable.userId, uid)))
     .returning();
 
   try {
-    await materializeDueRecurring(toDateString(new Date()));
+    await materializeDueRecurring(uid, toDateString(new Date()));
   } catch (err) {
     req.log.error({ err }, "materialization after update failed");
   }
@@ -128,7 +133,7 @@ router.patch("/recurring/:id", async (req, res): Promise<void> => {
   const [fresh] = await db
     .select()
     .from(recurringExpensesTable)
-    .where(eq(recurringExpensesTable.id, updated.id));
+    .where(and(eq(recurringExpensesTable.id, updated.id), eq(recurringExpensesTable.userId, uid)));
 
   res.json(serialize(fresh ?? updated));
 });
@@ -144,7 +149,7 @@ router.delete("/recurring/:id", async (req, res): Promise<void> => {
 
   const [deleted] = await db
     .delete(recurringExpensesTable)
-    .where(eq(recurringExpensesTable.id, params.data.id))
+    .where(and(eq(recurringExpensesTable.id, params.data.id), eq(recurringExpensesTable.userId, userId(req))))
     .returning();
 
   if (!deleted) {

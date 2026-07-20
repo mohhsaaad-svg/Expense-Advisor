@@ -1,23 +1,45 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, budgetTable } from "@workspace/db";
 import { UpdateBudgetBody } from "@workspace/api-zod";
+import { userId } from "../lib/user";
 
 const router = Router();
 
-async function getOrCreateBudget() {
-  const [existing] = await db.select().from(budgetTable).limit(1);
+/**
+ * Fetch the user's budget row, creating the default one on first touch.
+ * Race-safe: concurrent first requests both try the insert, the loser hits
+ * the per-user unique index (ON CONFLICT DO NOTHING) and re-reads the
+ * winner's row — the old select-then-insert race that produced duplicate
+ * budget rows can no longer happen.
+ */
+export async function getOrCreateBudget(uid: string) {
+  const [existing] = await db
+    .select()
+    .from(budgetTable)
+    .where(eq(budgetTable.userId, uid))
+    .limit(1);
   if (existing) return existing;
+
   const [created] = await db
     .insert(budgetTable)
-    .values({ dailyLimit: "100", monthlyLimit: "2000" })
+    .values({ userId: uid, dailyLimit: "100", monthlyLimit: "2000" })
+    .onConflictDoNothing({ target: budgetTable.userId })
     .returning();
-  return created;
+  if (created) return created;
+
+  const [winner] = await db
+    .select()
+    .from(budgetTable)
+    .where(eq(budgetTable.userId, uid))
+    .limit(1);
+  if (!winner) throw new Error("budget row vanished during get-or-create");
+  return winner;
 }
 
 // GET /budget
 router.get("/budget", async (req, res): Promise<void> => {
-  const budget = await getOrCreateBudget();
+  const budget = await getOrCreateBudget(userId(req));
   res.json({
     id: budget.id,
     dailyLimit: parseFloat(budget.dailyLimit),
@@ -28,13 +50,14 @@ router.get("/budget", async (req, res): Promise<void> => {
 
 // PUT /budget
 router.put("/budget", async (req, res): Promise<void> => {
+  const uid = userId(req);
   const body = UpdateBudgetBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
     return;
   }
 
-  const existing = await getOrCreateBudget();
+  const existing = await getOrCreateBudget(uid);
 
   const [updated] = await db
     .update(budgetTable)
@@ -43,7 +66,7 @@ router.put("/budget", async (req, res): Promise<void> => {
       monthlyLimit: body.data.monthlyLimit.toString(),
       updatedAt: new Date(),
     })
-    .where(eq(budgetTable.id, existing.id))
+    .where(and(eq(budgetTable.id, existing.id), eq(budgetTable.userId, uid)))
     .returning();
 
   if (!updated) {
