@@ -717,3 +717,86 @@ export const DeleteChallengeParams = zod.object({
 export const DeleteChallengeResponse = zod.void()
 
 
+/**
+ * @summary List the current user's notes
+ */
+export const ListNotesResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+export const ListNotesResponse = zod.array(ListNotesResponseItem)
+
+
+/**
+ * @summary Create a note
+ */
+
+
+
+export const CreateNoteBody = zod.object({
+  "title": zod.string().min(1),
+  "body": zod.string().optional()
+})
+
+export const CreateNoteResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Get note by ID
+ */
+export const GetNoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetNoteResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Update note
+ */
+export const UpdateNoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateNoteBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "body": zod.string().optional()
+})
+
+export const UpdateNoteResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.string().describe('ISO datetime string'),
+  "updatedAt": zod.string().describe('ISO datetime string')
+})
+
+
+/**
+ * @summary Delete note
+ */
+export const DeleteNoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteNoteResponse = zod.void()
+
+

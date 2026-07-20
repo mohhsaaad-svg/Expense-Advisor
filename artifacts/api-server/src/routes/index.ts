@@ -9,6 +9,7 @@ import preferencesRouter from "./preferences";
 import goalsRouter from "./goals";
 import challengesRouter from "./challenges";
 import advisorRouter from "./advisor";
+import notesRouter from "./notes";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router: IRouter = Router();
@@ -27,5 +28,6 @@ router.use(preferencesRouter);
 router.use(goalsRouter);
 router.use(challengesRouter);
 router.use(advisorRouter);
+router.use(notesRouter);
 
 export default router;

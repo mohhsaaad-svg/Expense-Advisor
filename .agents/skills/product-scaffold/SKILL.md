@@ -29,7 +29,8 @@ The API server (`artifacts/api-server`) is likewise shared infrastructure: a new
 - `pnpm-workspace.yaml` already globs `artifacts/*` and `lib/*` — a new directory there is picked up automatically after `pnpm install`.
 - Depend on siblings with `"@workspace/<name>": "workspace:*"`; pin common deps with `"catalog:"` versions (see the `catalog:` block in `pnpm-workspace.yaml`; react/react-dom are pinned for Expo compatibility).
 - Every package needs a `typecheck` script; the root `pnpm run typecheck` runs `tsc --build` across project references. After editing `lib/*` sources always typecheck from the **root** (package-local tsc can resolve stale composite declarations).
-- Register the new app with the `artifacts` skill (never hand-edit `artifact.toml`): matching `slug` and `previewPath`, dev server binds `0.0.0.0:$PORT`, Vite uses `base: process.env.BASE_PATH` and `server.allowedHosts: true` (copy `artifacts/expense-tracker/vite.config.ts`).
+- Register the new app with the `artifacts` skill (never hand-edit `artifact.toml`). `createArtifact` with the react-vite type already produces a correct `vite.config.ts` (binds `0.0.0.0:$PORT`, `base: process.env.BASE_PATH`, `allowedHosts: true`) and a scaffold that matches Ember's conventions — don't re-copy those files by hand.
+- The react-vite scaffold depends on `@workspace/api-client-react` out of the box but **not** on `@workspace/replit-auth-web`. To put the app behind auth, add `"@workspace/replit-auth-web": "workspace:*"` to the new package's deps **and** add `{ "path": "../../lib/replit-auth-web" }` to its `tsconfig.json` `references` (missing references break root `tsc --build`). Run `pnpm install` after editing deps.
 - In app code, build URLs from the base path (`import.meta.env.BASE_URL`), never root-relative `/api/...`.
 
 ## 2. Replit Auth
@@ -50,6 +51,7 @@ Sessions live in the DB (`lib/db/src/schema/auth.ts`). `SESSION_SECRET` is alrea
    - Entity-shaped request body names (`ExpenseInput`, not `PostExpensesBody`).
    - **Never** use `format: uri` / `format: email` — orval emits zod v4 calls that break the pinned zod v3.
 2. Run `pnpm --filter @workspace/api-spec run codegen` (runs orval, then root lib typecheck).
+   - After codegen, grep for the exact generated names instead of guessing — Zod names derive from the `operationId` and parameter location (e.g. `createNote` → `CreateNoteBody`, `GetNoteParams`, `ListNotesQueryParams` only when query params exist): `grep "^export const" lib/api-zod/src/generated/api.ts` and `grep "export function use" lib/api-client-react/src/generated/api.ts`.
 3. Generated output (never hand-edit, never hand-write hooks):
    - `lib/api-zod/src/generated` — Zod schemas + types; the server validates every boundary with these (`SomethingQueryParams.safeParse(req.query)` → 400 on failure).
    - `lib/api-client-react/src/generated` — React Query hooks; web imports them directly, mobile injects its Bearer token through `custom-fetch.ts`.
@@ -79,7 +81,7 @@ Add a per-user isolation test matrix for each new table (two users; each op agai
 
 ## 6. Shared design tokens
 
-- Web: CSS variables in `<app>/src/index.css` consumed via Tailwind semantic classes (`bg-background`, `text-primary`, …). Copy Ember's `artifacts/expense-tracker/src/index.css` structure, then swap the palette to the new product's identity (per the `design-standards` skill — each product gets its own identity on the shared craft bar).
+- Web: CSS variables in `<app>/src/index.css` consumed via Tailwind semantic classes (`bg-background`, `text-primary`, …). The react-vite scaffold already ships the full token structure with `red; /*replace with H S L */` placeholders in both `:root` and `.dark` — fill in the new product's palette there (per the `design-standards` skill — each product gets its own identity on the shared craft bar); don't copy Ember's file wholesale.
 - Mobile: mirror the web HSL variables as hex in `constants/colors.ts`, consumed through a `useColors` hook (see `artifacts/mobile/`).
 - Keep radius consistent per product (Ember: web `1rem` / mobile `16`).
 
@@ -89,8 +91,10 @@ Add a per-user isolation test matrix for each new table (two users; each op agai
 - Logging: pino + pino-http (`src/lib/logger.ts`) with header/cookie redaction; use `req.log`/`logger`, never `console.log`.
 - `express-rate-limit` on auth-sensitive routes; `NODE_ENV=test` skips limiters and pretty logging.
 - Boot-time schema check (`src/lib/schemaCheck.ts`): refuse to start against an un-migrated DB — this is what makes "migrate prod before publish" fail loudly instead of corrupting.
-- Migrations: add schema in `lib/db/src/schema/`, export from `index.ts`, generate/apply per `lib/db/drizzle.config.ts` and the `database` skill.
+- Migrations: add schema in `lib/db/src/schema/`, export it from `src/schema/index.ts`, then apply to the dev DB with `pnpm --filter @workspace/db run push`. Production schema is applied by Replit's Publish flow — never script prod migrations (see the `database` skill).
 
 ## Definition of done for a scaffold
 
 A new product's scaffold is complete when: the artifact renders behind auth, one domain table exists with the `user_id` FK, its CRUD routes pass the isolation test matrix, client hooks are generated (not hand-written), and root `pnpm run typecheck` passes.
+
+This recipe was validated end-to-end by bootstrapping the Alcove skeleton (`artifacts/alcove` + `notes` table + `artifacts/api-server/src/routes/notes.ts` + `src/test/notes-isolation.test.ts`) — use those files as a minimal worked example.

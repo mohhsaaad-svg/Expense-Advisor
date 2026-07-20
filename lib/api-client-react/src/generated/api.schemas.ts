@@ -55,6 +55,28 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface Note {
+  id: number;
+  title: string;
+  body: string;
+  /** ISO datetime string */
+  createdAt: string;
+  /** ISO datetime string */
+  updatedAt: string;
+}
+
+export interface NoteInput {
+  /** @minLength 1 */
+  title: string;
+  body?: string;
+}
+
+export interface NoteUpdate {
+  /** @minLength 1 */
+  title?: string;
+  body?: string;
+}
+
 export interface Expense {
   id: number;
   /** Amount in dollars */
