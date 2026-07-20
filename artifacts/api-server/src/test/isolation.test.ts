@@ -103,6 +103,27 @@ describe("preferences isolation", () => {
     expect(b.body.alertThreshold).toBe(95);
     expect(a.body.id).not.toBe(b.body.id);
   });
+
+  it("payday prompt dismissal is per-account and survives unrelated updates", async () => {
+    // A dismisses; B does not.
+    await request(app)
+      .put("/api/preferences")
+      .set(A.auth)
+      .send({ currency: "GBP", alertThreshold: 60, paydayPromptDismissed: true });
+
+    let a = await request(app).get("/api/preferences").set(A.auth);
+    const b = await request(app).get("/api/preferences").set(B.auth);
+    expect(a.body.paydayPromptDismissed).toBe(true);
+    expect(b.body.paydayPromptDismissed).toBe(false);
+
+    // An update that omits the field must not resurrect the prompt.
+    await request(app)
+      .put("/api/preferences")
+      .set(A.auth)
+      .send({ currency: "USD", alertThreshold: 70 });
+    a = await request(app).get("/api/preferences").set(A.auth);
+    expect(a.body.paydayPromptDismissed).toBe(true);
+  });
 });
 
 describe("recurring isolation", () => {

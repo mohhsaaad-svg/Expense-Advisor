@@ -15,6 +15,8 @@ export interface Preferences {
   language: PreferencesLanguage;
   /** Percent of daily limit at which warnings fire */
   alertThreshold: number;
+  /** Whether the payday budgeting prompt has been dismissed for this account */
+  paydayPromptDismissed: boolean;
   /** ISO datetime string */
   updatedAt: string;
 }

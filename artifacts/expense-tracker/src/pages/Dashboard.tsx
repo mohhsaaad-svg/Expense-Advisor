@@ -5,7 +5,11 @@ import {
   getGetSpendingTipsQueryKey,
   useGetSpendingStats,
   getGetSpendingStatsQueryKey,
+  useGetPreferences,
+  getGetPreferencesQueryKey,
+  useUpdatePreferences,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { localDateKey } from "@/lib/utils";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -56,14 +60,38 @@ export default function Dashboard() {
   const { format } = useCurrency();
   const t = useT();
 
-  const [paydayPromptDismissed, setPaydayPromptDismissed] = useState(
-    () => localStorage.getItem("ember-payday-prompt-dismissed") === "1"
-  );
+  // Dismissal is stored in server-side preferences so it follows the
+  // account across devices. Local state hides the prompt instantly.
+  const queryClient = useQueryClient();
+  const { data: prefs } = useGetPreferences({
+    query: { queryKey: getGetPreferencesQueryKey() },
+  });
+  const updatePreferences = useUpdatePreferences();
+  const [dismissedLocally, setDismissedLocally] = useState(false);
   const dismissPaydayPrompt = () => {
-    localStorage.setItem("ember-payday-prompt-dismissed", "1");
-    setPaydayPromptDismissed(true);
+    setDismissedLocally(true);
+    if (!prefs) return;
+    updatePreferences.mutate(
+      {
+        data: {
+          currency: prefs.currency,
+          alertThreshold: prefs.alertThreshold,
+          paydayPromptDismissed: true,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
+        },
+      }
+    );
   };
-  const showPaydayPrompt = !!stats && !stats.cycleAnchored && !paydayPromptDismissed;
+  const showPaydayPrompt =
+    !!stats &&
+    !stats.cycleAnchored &&
+    !!prefs &&
+    !prefs.paydayPromptDismissed &&
+    !dismissedLocally;
 
   const getAlertIcon = (type: string) => {
     switch (type) {

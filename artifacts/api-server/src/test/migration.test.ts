@@ -224,3 +224,39 @@ describe("0003_preferences_language migration", () => {
     });
   });
 });
+
+const PAYDAY_PROMPT_MIGRATION = fs.readFileSync(
+  fileURLToPath(
+    new URL("../../../../lib/db/migrations/0004_payday_prompt_dismissed.sql", import.meta.url),
+  ),
+  "utf8",
+);
+
+describe("0004_payday_prompt_dismissed migration", () => {
+  it("adds the flag defaulting to false for existing rows, and is re-runnable", async () => {
+    await withScratchSchema(async (client, schema) => {
+      await client.query(`INSERT INTO users (id) VALUES ('only-user')`);
+      await client.query(`INSERT INTO preferences (updated_at) VALUES (now())`);
+      await client.query(MIGRATION); // 0001 first, mirroring the rollout order
+
+      await client.query(PAYDAY_PROMPT_MIGRATION);
+      await client.query(PAYDAY_PROMPT_MIGRATION); // idempotent
+
+      const cols = await client.query(
+        `SELECT is_nullable, column_default FROM information_schema.columns
+          WHERE table_schema = $1 AND table_name = 'preferences'
+            AND column_name = 'payday_prompt_dismissed'`,
+        [schema],
+      );
+      expect(cols.rows).toHaveLength(1);
+      expect(cols.rows[0].is_nullable).toBe("NO");
+      expect(cols.rows[0].column_default).toMatch(/false/);
+
+      // Existing row backfilled to false — prompt still shows until dismissed.
+      const row = await client.query(
+        `SELECT count(*)::int AS n FROM preferences WHERE payday_prompt_dismissed = false`,
+      );
+      expect(row.rows[0].n).toBe(1);
+    });
+  });
+});

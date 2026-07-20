@@ -42,6 +42,7 @@ router.get("/preferences", async (req, res): Promise<void> => {
     currency: prefs.currency,
     language: prefs.language,
     alertThreshold: prefs.alertThreshold,
+    paydayPromptDismissed: prefs.paydayPromptDismissed,
     updatedAt: prefs.updatedAt.toISOString(),
   });
 });
@@ -64,6 +65,10 @@ router.put("/preferences", async (req, res): Promise<void> => {
       // Optional in the input so pre-language clients keep working
       language: body.data.language ?? existing.language,
       alertThreshold: body.data.alertThreshold,
+      // Omitted in the body means "leave unchanged" — clients that only
+      // update currency/threshold must not resurrect a dismissed prompt.
+      paydayPromptDismissed:
+        body.data.paydayPromptDismissed ?? existing.paydayPromptDismissed,
       updatedAt: new Date(),
     })
     .where(and(eq(preferencesTable.id, existing.id), eq(preferencesTable.userId, uid)))
@@ -79,6 +84,7 @@ router.put("/preferences", async (req, res): Promise<void> => {
     currency: updated.currency,
     language: updated.language,
     alertThreshold: updated.alertThreshold,
+    paydayPromptDismissed: updated.paydayPromptDismissed,
     updatedAt: updated.updatedAt.toISOString(),
   });
 });

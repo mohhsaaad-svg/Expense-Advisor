@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, varchar, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./auth";
@@ -18,6 +18,9 @@ export const preferencesTable = pgTable(
     language: text("language").notNull().default("en"),
     // Percent of the daily limit at which "approaching limit" warnings fire (50-100)
     alertThreshold: integer("alert_threshold").notNull().default(80),
+    // Whether the user dismissed the "budget payday to payday" prompt.
+    // Stored server-side so the dismissal follows the account across devices.
+    paydayPromptDismissed: boolean("payday_prompt_dismissed").notNull().default(false),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [uniqueIndex("preferences_user_uq").on(table.userId)],

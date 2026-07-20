@@ -16,4 +16,6 @@ export interface PreferencesInput {
      * @maximum 100
      */
   alertThreshold: number;
+  /** Omit to leave the current value unchanged */
+  paydayPromptDismissed?: boolean;
 }

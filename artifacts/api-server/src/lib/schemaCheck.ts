@@ -75,4 +75,20 @@ export async function assertSchemaReady(): Promise<void> {
         `before starting the server.`,
     );
   }
+
+  // Cross-device payday-prompt dismissal flag.
+  const paydayPrompt = await pool.query(
+    `SELECT 1
+       FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'preferences'
+        AND column_name = 'payday_prompt_dismissed'`,
+  );
+  if (paydayPrompt.rowCount === 0) {
+    throw new Error(
+      `Database schema is missing preferences.payday_prompt_dismissed. ` +
+        `Apply lib/db/migrations/0004_payday_prompt_dismissed.sql to this database ` +
+        `before starting the server.`,
+    );
+  }
 }

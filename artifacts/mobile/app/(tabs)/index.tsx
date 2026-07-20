@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -25,17 +24,19 @@ import { useCategoryName, useLang, useT, type TFunc } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getGetDailySummaryQueryKey,
+  getGetPreferencesQueryKey,
   getGetSpendingStatsQueryKey,
   getGetSpendingTipsQueryKey,
   useGetDailySummary,
+  useGetPreferences,
   useGetSpendingStats,
   useGetSpendingTips,
   useGetWeeklySummary,
+  useUpdatePreferences,
 } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-
-const PAYDAY_PROMPT_KEY = 'ember-payday-prompt-dismissed';
 
 function greeting(t: TFunc): string {
   const h = new Date().getHours();
@@ -89,16 +90,35 @@ export default function TodayScreen() {
     },
   );
 
-  // null = still loading dismissal state; avoids flashing the prompt.
-  const [paydayPromptDismissed, setPaydayPromptDismissed] = useState<boolean | null>(null);
-  useEffect(() => {
-    AsyncStorage.getItem(PAYDAY_PROMPT_KEY)
-      .then((v) => setPaydayPromptDismissed(v === '1'))
-      .catch(() => setPaydayPromptDismissed(false));
-  }, []);
+  // Dismissal lives in server-side preferences so it follows the account
+  // across devices. While preferences load, the prompt stays hidden —
+  // avoids flashing it for users who already dismissed it elsewhere.
+  const queryClient = useQueryClient();
+  const prefs = useGetPreferences({
+    query: { queryKey: getGetPreferencesQueryKey() },
+  });
+  const updatePreferences = useUpdatePreferences();
+  const [dismissedLocally, setDismissedLocally] = useState(false);
+  const paydayPromptDismissed = prefs.data
+    ? prefs.data.paydayPromptDismissed || dismissedLocally
+    : null;
   const dismissPaydayPrompt = () => {
-    setPaydayPromptDismissed(true);
-    AsyncStorage.setItem(PAYDAY_PROMPT_KEY, '1').catch(() => {});
+    setDismissedLocally(true);
+    if (!prefs.data) return;
+    updatePreferences.mutate(
+      {
+        data: {
+          currency: prefs.data.currency,
+          alertThreshold: prefs.data.alertThreshold,
+          paydayPromptDismissed: true,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
+        },
+      },
+    );
   };
 
   const refreshing =

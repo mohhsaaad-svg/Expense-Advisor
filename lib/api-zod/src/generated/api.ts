@@ -403,6 +403,7 @@ export const GetPreferencesResponse = zod.object({
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
   "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
+  "paydayPromptDismissed": zod.boolean().describe('Whether the payday budgeting prompt has been dismissed for this account'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })
 
@@ -418,7 +419,8 @@ export const updatePreferencesBodyAlertThresholdMax = 100;
 export const UpdatePreferencesBody = zod.object({
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
   "language": zod.enum(['en', 'ar']).optional(),
-  "alertThreshold": zod.number().min(updatePreferencesBodyAlertThresholdMin).max(updatePreferencesBodyAlertThresholdMax)
+  "alertThreshold": zod.number().min(updatePreferencesBodyAlertThresholdMin).max(updatePreferencesBodyAlertThresholdMax),
+  "paydayPromptDismissed": zod.boolean().optional().describe('Omit to leave the current value unchanged')
 })
 
 export const UpdatePreferencesResponse = zod.object({
@@ -426,6 +428,7 @@ export const UpdatePreferencesResponse = zod.object({
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
   "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
+  "paydayPromptDismissed": zod.boolean().describe('Whether the payday budgeting prompt has been dismissed for this account'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })
 

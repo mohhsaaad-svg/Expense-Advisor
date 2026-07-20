@@ -1359,7 +1359,7 @@ components:
 
     Preferences:
       type: object
-      required: [id, currency, language, alertThreshold, updatedAt]
+      required: [id, currency, language, alertThreshold, paydayPromptDismissed, updatedAt]
       properties:
         id:
           type: integer
@@ -1373,6 +1373,9 @@ components:
         alertThreshold:
           type: integer
           description: Percent of daily limit at which warnings fire
+        paydayPromptDismissed:
+          type: boolean
+          description: Whether the payday budgeting prompt has been dismissed for this account
         updatedAt:
           type: string
           description: ISO datetime string
@@ -1391,6 +1394,9 @@ components:
           type: integer
           minimum: 50
           maximum: 100
+        paydayPromptDismissed:
+          type: boolean
+          description: Omit to leave the current value unchanged
 
     Obligation:
       type: object

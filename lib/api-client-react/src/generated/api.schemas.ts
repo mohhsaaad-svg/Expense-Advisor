@@ -307,6 +307,8 @@ export interface Preferences {
   language: PreferencesLanguage;
   /** Percent of daily limit at which warnings fire */
   alertThreshold: number;
+  /** Whether the payday budgeting prompt has been dismissed for this account */
+  paydayPromptDismissed: boolean;
   /** ISO datetime string */
   updatedAt: string;
 }
@@ -340,6 +342,8 @@ export interface PreferencesInput {
      * @maximum 100
      */
   alertThreshold: number;
+  /** Omit to leave the current value unchanged */
+  paydayPromptDismissed?: boolean;
 }
 
 export type ObligationFrequency = typeof ObligationFrequency[keyof typeof ObligationFrequency];
