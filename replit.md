@@ -19,6 +19,19 @@ Two custom skills encode the studio process and should activate on any new build
 
 Conventions summary (see `product-playbook` for detail): pnpm monorepo, one artifact per product with matching slug/`previewPath`; the OpenAPI contract is the source of truth (regenerate client code after every change); strict per-user data isolation on every query; quality gates before "done" (typecheck → API tests → end-to-end tests → code-review round → threat model for personal-data apps); production database migrated before every publish.
 
+## Basira board directive (controlling — 2026-07-20)
+
+Authorized scope, in order: **WP0** security audit (owner-scope every query including newly merged features, negative cross-user tests, keep all workflows green) → **WP1** money + country foundation (financial code moves to bigint minor units — **no JS `Number` in financial math**; currency registry with JOD/KWD/BHD/OMR = 3 decimals; `CountryProfile`; i18n + RTL primitives) → **WP2** additive schema migration (new tables/columns only; legacy stays dual-readable during transition; rollback tested before publish).
+
+Amendments in force:
+1. Portfolio screens/tables are **removed from the MVP entirely** — do not build or scaffold them.
+2. The Basira advisor ships **feature-flag OFF** and is not implemented this phase (Ember's existing Ask Ember stays as-is).
+3. **No UI work packages (WP5+)** until the founder confirms the validation gate passed.
+
+**Stop and ask the founder before:** destructive migrations, auth changes, production DB mutation, bank/data providers, autonomous money actions, public name changes ("Basira" is a working title, not cleared).
+
+Process: every PR/merge leaves the product deployable; update this file after each work package completes.
+
 ## User preferences
 
 These apply to every Product Lab product:
