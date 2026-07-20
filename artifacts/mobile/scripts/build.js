@@ -144,10 +144,15 @@ function getFreePort() {
 }
 
 async function startMetro(expoPublicDomain, expoPublicReplId) {
-  const isRunning = await checkMetroHealth();
-  if (isRunning) {
-    console.log('Metro already running');
-    return;
+  // Reuse a pre-existing Metro only when explicitly requested — blindly
+  // adopting whatever answers on the default port risks bundling another
+  // project's code on shared machines.
+  if (process.env.METRO_REUSE === '1') {
+    const isRunning = await checkMetroHealth();
+    if (isRunning) {
+      console.log(`Reusing Metro on port ${metroPort}`);
+      return;
+    }
   }
 
   // The default Metro port (8081) is often taken by other dev servers.

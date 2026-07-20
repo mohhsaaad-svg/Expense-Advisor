@@ -10,4 +10,4 @@
 - [gitPush upstream workaround](github-push-upstream.md) — gitPush callback refuses when main tracks a subrepl remote (or has no upstream); re-point upstream to origin/main, push, restore.
 - [Vite config env gating](vite-config-env-gating.md) — PORT must be serve-only, BASE_PATH needs a canonical fallback; async defineConfig + local plugins hit a misleading TS2769.
 - [Expo static build ports](expo-static-build-ports.md) — static Expo Go build must grab a free Metro port dynamically; 8081 collides → interactive prompt → non-interactive death; run detached, poll log.
-- pkill -f from a shell whose own command string contains the pattern kills that shell first (silent -1, no output); use a [b]racketed char in the pattern or pgrep + filter out $.
+- [Shell self-match trap](shell-selfmatch-trap.md) — pkill/pgrep -f patterns match the invoking shell’s own command string: silent self-kill or false “still running” polls.
