@@ -1677,7 +1677,7 @@ components:
 
     Goal:
       type: object
-      required: [id, name, targetAmount, savedAmount, deadline, createdAt]
+      required: [id, name, targetAmount, savedAmount, deadline, perPaydayAmount, createdAt]
       properties:
         id:
           type: integer
@@ -1692,6 +1692,9 @@ components:
         deadline:
           type: [string, 'null']
           description: Optional target date (YYYY-MM-DD)
+        perPaydayAmount:
+          type: [number, 'null']
+          description: Optional fixed amount reserved from safe-to-spend each pay cycle
         createdAt:
           type: string
           description: ISO datetime string
@@ -1709,6 +1712,10 @@ components:
         deadline:
           type: [string, 'null']
           description: Optional target date (YYYY-MM-DD)
+        perPaydayAmount:
+          type: [number, 'null']
+          description: Optional fixed amount to set aside each payday
+          minimum: 0.001
 
     GoalUpdate:
       type: object
@@ -1722,6 +1729,10 @@ components:
         deadline:
           type: [string, 'null']
           description: Target date (YYYY-MM-DD) or null to clear
+        perPaydayAmount:
+          type: [number, 'null']
+          description: Amount to set aside each payday, or null to clear
+          minimum: 0.001
 
     GoalContribution:
       type: object

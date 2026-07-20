@@ -39,6 +39,7 @@ const goalSchema = z.object({
   name: z.string().min(1, "Name is required"),
   targetAmount: z.coerce.number().min(0.01, "Amount must be positive"),
   deadline: z.string().optional().nullable(),
+  perPaydayAmount: z.coerce.number().min(0).optional().nullable(),
 });
 
 const challengeSchema = z.object({
@@ -130,7 +131,7 @@ export default function Goals() {
 
   const goalForm = useForm<z.infer<typeof goalSchema>>({
     resolver: zodResolver(goalSchema),
-    defaultValues: { name: "", targetAmount: 0, deadline: null },
+    defaultValues: { name: "", targetAmount: 0, deadline: null, perPaydayAmount: null },
   });
 
   const challengeForm = useForm<z.infer<typeof challengeSchema>>({
@@ -144,11 +145,12 @@ export default function Goals() {
   });
 
   const onGoalSubmit = (data: z.infer<typeof goalSchema>) => {
+    const perPaydayAmount = data.perPaydayAmount && data.perPaydayAmount > 0 ? data.perPaydayAmount : null;
     if (editingGoalId) {
-      updateGoal.mutate({ id: editingGoalId, data: { name: data.name, targetAmount: data.targetAmount, deadline: data.deadline || null } });
+      updateGoal.mutate({ id: editingGoalId, data: { name: data.name, targetAmount: data.targetAmount, deadline: data.deadline || null, perPaydayAmount } });
       setEditingGoalId(null);
     } else {
-      createGoal.mutate({ data: { name: data.name, targetAmount: data.targetAmount, deadline: data.deadline || null } });
+      createGoal.mutate({ data: { name: data.name, targetAmount: data.targetAmount, deadline: data.deadline || null, perPaydayAmount } });
     }
     setIsGoalDialogOpen(false);
     goalForm.reset();
@@ -248,6 +250,26 @@ export default function Goals() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={goalForm.control}
+                      name="perPaydayAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('goals.perPaydayOptional')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.001"
+                              min="0"
+                              value={field.value ?? ""}
+                              onChange={(e) => field.onChange(e.target.value === "" ? null : e.target.value)}
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">{t('goals.perPaydayHint')}</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <DialogFooter>
                       <Button type="submit" disabled={createGoal.isPending}>{t('goals.saveGoal')}</Button>
                     </DialogFooter>
@@ -281,13 +303,19 @@ export default function Goals() {
                           <Calendar className="w-3 h-3" /> {t('goals.by', { date: format(new Date(goal.deadline), "MMM d, yyyy") })}
                         </CardDescription>
                       )}
+                      {goal.perPaydayAmount != null && (
+                        <CardDescription className="text-xs mt-1 flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3" /> {t('goals.perPaydayBadge', { amount: formatCurrency(goal.perPaydayAmount) })}
+                        </CardDescription>
+                      )}
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => {
                          goalForm.reset({
                            name: goal.name,
                            targetAmount: goal.targetAmount,
-                           deadline: goal.deadline
+                           deadline: goal.deadline,
+                           perPaydayAmount: goal.perPaydayAmount ?? null
                          });
                          setEditingGoalId(goal.id);
                          setIsGoalDialogOpen(true);

@@ -16,4 +16,10 @@ export interface GoalUpdate {
      * @nullable
      */
   deadline?: string | null;
+  /**
+     * Amount to set aside each payday, or null to clear
+     * @minimum 0.001
+     * @nullable
+     */
+  perPaydayAmount?: number | null;
 }

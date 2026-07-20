@@ -260,3 +260,41 @@ describe("0004_payday_prompt_dismissed migration", () => {
     });
   });
 });
+
+const PER_PAYDAY_MIGRATION = fs.readFileSync(
+  fileURLToPath(
+    new URL("../../../../lib/db/migrations/0005_goal_per_payday.sql", import.meta.url),
+  ),
+  "utf8",
+);
+
+describe("0005_goal_per_payday migration", () => {
+  it("adds a nullable per_payday_amount column without touching rows, and is re-runnable", async () => {
+    await withScratchSchema(async (client, schema) => {
+      await client.query(`INSERT INTO users (id) VALUES ('only-user')`);
+      await client.query(`INSERT INTO goals DEFAULT VALUES`);
+      await client.query(MIGRATION); // 0001 first, mirroring the rollout order
+
+      await client.query(PER_PAYDAY_MIGRATION);
+      await client.query(PER_PAYDAY_MIGRATION); // idempotent
+
+      const cols = await client.query(
+        `SELECT is_nullable, numeric_precision, numeric_scale
+           FROM information_schema.columns
+          WHERE table_schema = $1 AND table_name = 'goals'
+            AND column_name = 'per_payday_amount'`,
+        [schema],
+      );
+      expect(cols.rows).toHaveLength(1);
+      expect(cols.rows[0].is_nullable).toBe("YES");
+      expect(cols.rows[0].numeric_precision).toBe(12);
+      expect(cols.rows[0].numeric_scale).toBe(3);
+
+      // Existing goals stay untouched: no reservation until the user opts in.
+      const row = await client.query(
+        `SELECT count(*)::int AS n FROM goals WHERE per_payday_amount IS NULL`,
+      );
+      expect(row.rows[0].n).toBe(1);
+    });
+  });
+});

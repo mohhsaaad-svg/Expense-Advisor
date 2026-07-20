@@ -138,16 +138,19 @@ export async function computeSafeToSpend(uid: string, date?: string): Promise<Sa
   upcoming.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
   const upcomingMills = upcoming.reduce((acc, u) => acc + u.amountMills, 0);
 
-  // Goal buffers: for goals with a deadline, reserve remaining ÷ cycles left
-  // this cycle. Goals without a deadline reserve nothing (they're aspirations,
-  // not commitments) but the UI still shows them at zero via the goals list.
+  // Goal buffers: a goal reserves money this cycle when it either has a
+  // deadline (remaining ÷ cycles left) or an explicit per-payday amount the
+  // user chose to set aside. When both exist, the larger reservation wins so
+  // the goal still lands on time. Fully-funded goals reserve nothing.
   const buffers: Array<{ name: string; amountMills: number; deadline: string | null }> = [];
   for (const g of goals) {
-    if (!g.deadline) continue;
     const remaining = Math.max(0, toMills(g.targetAmount) - toMills(g.savedAmount));
     if (remaining <= 0) continue;
-    const perCycle = Math.ceil(remaining / cyclesUntil(today, g.deadline));
-    buffers.push({ name: g.name, amountMills: perCycle, deadline: g.deadline });
+    const deadlineMills = g.deadline ? Math.ceil(remaining / cyclesUntil(today, g.deadline)) : 0;
+    const perPaydayMills = g.perPaydayAmount ? Math.min(remaining, toMills(g.perPaydayAmount)) : 0;
+    const amountMills = Math.max(deadlineMills, perPaydayMills);
+    if (amountMills <= 0) continue;
+    buffers.push({ name: g.name, amountMills, deadline: g.deadline });
   }
   const buffersMills = buffers.reduce((acc, b) => acc + b.amountMills, 0);
 

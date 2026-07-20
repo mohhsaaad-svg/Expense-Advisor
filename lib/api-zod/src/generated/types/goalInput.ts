@@ -16,4 +16,10 @@ export interface GoalInput {
      * @nullable
      */
   deadline?: string | null;
+  /**
+     * Optional fixed amount to set aside each payday
+     * @minimum 0.001
+     * @nullable
+     */
+  perPaydayAmount?: number | null;
 }

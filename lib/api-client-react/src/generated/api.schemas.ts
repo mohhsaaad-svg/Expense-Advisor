@@ -538,6 +538,11 @@ export interface Goal {
      * @nullable
      */
   deadline: string | null;
+  /**
+     * Optional fixed amount reserved from safe-to-spend each pay cycle
+     * @nullable
+     */
+  perPaydayAmount: number | null;
   /** ISO datetime string */
   createdAt: string;
 }
@@ -552,6 +557,12 @@ export interface GoalInput {
      * @nullable
      */
   deadline?: string | null;
+  /**
+     * Optional fixed amount to set aside each payday
+     * @minimum 0.001
+     * @nullable
+     */
+  perPaydayAmount?: number | null;
 }
 
 export interface GoalUpdate {
@@ -564,6 +575,12 @@ export interface GoalUpdate {
      * @nullable
      */
   deadline?: string | null;
+  /**
+     * Amount to set aside each payday, or null to clear
+     * @minimum 0.001
+     * @nullable
+     */
+  perPaydayAmount?: number | null;
 }
 
 export interface GoalContribution {

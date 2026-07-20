@@ -18,6 +18,11 @@ export interface Goal {
      * @nullable
      */
   deadline: string | null;
+  /**
+     * Optional fixed amount reserved from safe-to-spend each pay cycle
+     * @nullable
+     */
+  perPaydayAmount: number | null;
   /** ISO datetime string */
   createdAt: string;
 }

@@ -91,4 +91,20 @@ export async function assertSchemaReady(): Promise<void> {
         `before starting the server.`,
     );
   }
+
+  // Per-payday goal reservation amount.
+  const perPayday = await pool.query(
+    `SELECT 1
+       FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'goals'
+        AND column_name = 'per_payday_amount'`,
+  );
+  if (perPayday.rowCount === 0) {
+    throw new Error(
+      `Database schema is missing goals.per_payday_amount. ` +
+        `Apply lib/db/migrations/0005_goal_per_payday.sql to this database ` +
+        `before starting the server.`,
+    );
+  }
 }

@@ -20,6 +20,7 @@ function serializeGoal(g: GoalRow) {
     targetAmount: Number(g.targetAmount),
     savedAmount: Number(g.savedAmount),
     deadline: g.deadline ?? null,
+    perPaydayAmount: g.perPaydayAmount != null ? Number(g.perPaydayAmount) : null,
     createdAt: g.createdAt.toISOString(),
   };
 }
@@ -57,6 +58,8 @@ router.post("/goals", async (req, res): Promise<void> => {
       name: body.data.name,
       targetAmount: String(body.data.targetAmount),
       deadline: body.data.deadline ?? null,
+      perPaydayAmount:
+        body.data.perPaydayAmount != null ? String(body.data.perPaydayAmount) : null,
     })
     .returning();
   res.status(201).json(serializeGoal(created));
@@ -90,10 +93,18 @@ router.patch("/goals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const set: Partial<{ name: string; targetAmount: string; deadline: string | null }> = {};
+  const set: Partial<{
+    name: string;
+    targetAmount: string;
+    deadline: string | null;
+    perPaydayAmount: string | null;
+  }> = {};
   if (body.data.name !== undefined) set.name = body.data.name;
   if (body.data.targetAmount !== undefined) set.targetAmount = String(body.data.targetAmount);
   if (body.data.deadline !== undefined) set.deadline = body.data.deadline;
+  if (body.data.perPaydayAmount !== undefined)
+    set.perPaydayAmount =
+      body.data.perPaydayAmount != null ? String(body.data.perPaydayAmount) : null;
 
   if (Object.keys(set).length === 0) {
     res.json(serializeGoal(existing));

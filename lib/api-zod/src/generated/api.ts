@@ -634,6 +634,7 @@ export const ListGoalsResponseItem = zod.object({
   "targetAmount": zod.number().describe('Target amount in dollars'),
   "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
   "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "perPaydayAmount": zod.number().nullable().describe('Optional fixed amount reserved from safe-to-spend each pay cycle'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 export const ListGoalsResponse = zod.array(ListGoalsResponseItem)
@@ -645,12 +646,15 @@ export const ListGoalsResponse = zod.array(ListGoalsResponseItem)
 
 export const createGoalBodyTargetAmountMin = 0.01;
 
+export const createGoalBodyPerPaydayAmountMin = 0.001;
+
 
 
 export const CreateGoalBody = zod.object({
   "name": zod.string().min(1),
   "targetAmount": zod.number().min(createGoalBodyTargetAmountMin),
-  "deadline": zod.string().nullish().describe('Optional target date (YYYY-MM-DD)')
+  "deadline": zod.string().nullish().describe('Optional target date (YYYY-MM-DD)'),
+  "perPaydayAmount": zod.number().min(createGoalBodyPerPaydayAmountMin).nullish().describe('Optional fixed amount to set aside each payday')
 })
 
 export const CreateGoalResponse = zod.object({
@@ -659,6 +663,7 @@ export const CreateGoalResponse = zod.object({
   "targetAmount": zod.number().describe('Target amount in dollars'),
   "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
   "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "perPaydayAmount": zod.number().nullable().describe('Optional fixed amount reserved from safe-to-spend each pay cycle'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 
@@ -673,12 +678,15 @@ export const UpdateGoalParams = zod.object({
 
 export const updateGoalBodyTargetAmountMin = 0.01;
 
+export const updateGoalBodyPerPaydayAmountMin = 0.001;
+
 
 
 export const UpdateGoalBody = zod.object({
   "name": zod.string().min(1).optional(),
   "targetAmount": zod.number().min(updateGoalBodyTargetAmountMin).optional(),
-  "deadline": zod.string().nullish().describe('Target date (YYYY-MM-DD) or null to clear')
+  "deadline": zod.string().nullish().describe('Target date (YYYY-MM-DD) or null to clear'),
+  "perPaydayAmount": zod.number().min(updateGoalBodyPerPaydayAmountMin).nullish().describe('Amount to set aside each payday, or null to clear')
 })
 
 export const UpdateGoalResponse = zod.object({
@@ -687,6 +695,7 @@ export const UpdateGoalResponse = zod.object({
   "targetAmount": zod.number().describe('Target amount in dollars'),
   "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
   "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "perPaydayAmount": zod.number().nullable().describe('Optional fixed amount reserved from safe-to-spend each pay cycle'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 
@@ -718,6 +727,7 @@ export const ContributeToGoalResponse = zod.object({
   "targetAmount": zod.number().describe('Target amount in dollars'),
   "savedAmount": zod.number().describe('Amount saved so far, in dollars'),
   "deadline": zod.string().nullable().describe('Optional target date (YYYY-MM-DD)'),
+  "perPaydayAmount": zod.number().nullable().describe('Optional fixed amount reserved from safe-to-spend each pay cycle'),
   "createdAt": zod.string().describe('ISO datetime string')
 })
 

@@ -15,6 +15,8 @@ export const goalsTable = pgTable(
     savedAmount: numeric("saved_amount", { precision: 12, scale: 3 }).notNull().default("0"),
     // Optional target date for the goal (YYYY-MM-DD)
     deadline: date("deadline"),
+    // Optional fixed amount to reserve each pay cycle (for open-ended goals)
+    perPaydayAmount: numeric("per_payday_amount", { precision: 12, scale: 3 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [index("goals_user_idx").on(table.userId)],

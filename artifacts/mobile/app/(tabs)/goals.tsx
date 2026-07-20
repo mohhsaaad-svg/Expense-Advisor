@@ -325,6 +325,13 @@ export default function GoalsScreen() {
                           pct,
                         })}
                   </Text>
+                  {g.perPaydayAmount != null ? (
+                    <Text
+                      style={[styles.goalMeta, { color: colors.mutedForeground }, rtlText]}
+                    >
+                      {t('goals.perPaydayBadge', { amount: format(g.perPaydayAmount) })}
+                    </Text>
+                  ) : null}
                   <View style={{ marginTop: 10 }}>
                     <ProgressBar percent={pct} height={10} />
                   </View>
@@ -671,11 +678,21 @@ function GoalFormModal({
 
   const [name, setName] = useState(goal?.name ?? '');
   const [target, setTarget] = useState(goal ? String(goal.targetAmount) : '');
+  const [perPayday, setPerPayday] = useState(
+    goal?.perPaydayAmount != null ? String(goal.perPaydayAmount) : '',
+  );
   // undefined = untouched (keep existing on edit); null = no date; string = new date
   const [deadline, setDeadline] = useState<string | null | undefined>(undefined);
 
   const parsedTarget = parseFloat(target.replace(',', '.'));
-  const valid = name.trim().length > 0 && !Number.isNaN(parsedTarget) && parsedTarget > 0;
+  const parsedPerPayday = perPayday.trim() === '' ? null : parseFloat(perPayday.replace(',', '.'));
+  const perPaydayValid =
+    parsedPerPayday === null || (!Number.isNaN(parsedPerPayday) && parsedPerPayday > 0);
+  const valid =
+    name.trim().length > 0 &&
+    !Number.isNaN(parsedTarget) &&
+    parsedTarget > 0 &&
+    perPaydayValid;
   const pending = createGoal.isPending || updateGoal.isPending;
   const failed = createGoal.isError || updateGoal.isError;
 
@@ -689,6 +706,7 @@ function GoalFormModal({
           data: {
             name: name.trim(),
             targetAmount: parsedTarget,
+            perPaydayAmount: parsedPerPayday,
             ...(deadline !== undefined ? { deadline } : {}),
           },
         },
@@ -701,6 +719,7 @@ function GoalFormModal({
             name: name.trim(),
             targetAmount: parsedTarget,
             deadline: deadline ?? null,
+            ...(parsedPerPayday !== null ? { perPaydayAmount: parsedPerPayday } : {}),
           },
         },
         { onSuccess: onSaved },
@@ -764,6 +783,37 @@ function GoalFormModal({
           testID="input-goal-target"
         />
       </View>
+
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+        {t('goalForm.perPayday')}
+      </Text>
+      <View
+        style={[
+          styles.amountWrap,
+          rowReverse,
+          {
+            borderColor: colors.input,
+            backgroundColor: colors.card,
+            borderRadius: colorTokens.radius - 4,
+          },
+        ]}
+      >
+        <Text style={[styles.amountSymbol, { color: colors.mutedForeground }]}>
+          {currencySymbol(currency)}
+        </Text>
+        <TextInput
+          value={perPayday}
+          onChangeText={setPerPayday}
+          keyboardType="decimal-pad"
+          placeholder="0"
+          placeholderTextColor={colors.mutedForeground}
+          style={[styles.amountInput, { color: colors.foreground }]}
+          testID="input-goal-per-payday"
+        />
+      </View>
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 4 }, rtlText]}>
+        {t('goalForm.perPaydayHint')}
+      </Text>
 
       <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
         {goal?.deadline

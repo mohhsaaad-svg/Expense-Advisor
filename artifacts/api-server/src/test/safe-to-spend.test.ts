@@ -114,6 +114,59 @@ describe("GET /insights/safe-to-spend", () => {
     }
   });
 
+  it("reserves per-payday amounts for open-ended goals, capped at remaining", async () => {
+    const u = await createTestUser("sts-perpay");
+    try {
+      await request(app)
+        .put("/api/budget")
+        .set(u.auth)
+        .send({ dailyLimit: 30, monthlyLimit: 900, salaryAmount: 1000, salaryDay: 25 });
+
+      // Open-ended goal: no deadline, 25.500 set aside each payday.
+      const rainy = await request(app)
+        .post("/api/goals")
+        .set(u.auth)
+        .send({ name: "Rainy day", targetAmount: 500, perPaydayAmount: 25.5 });
+      expect(rainy.status).toBe(201);
+      expect(rainy.body.perPaydayAmount).toBe(25.5);
+
+      // Nearly-funded goal: remaining 2.000 caps the 50 per-payday reservation.
+      const nearly = await request(app)
+        .post("/api/goals")
+        .set(u.auth)
+        .send({ name: "Nearly done", targetAmount: 100, perPaydayAmount: 50 });
+      await request(app).post(`/api/goals/${nearly.body.id}/contribute`).set(u.auth).send({ amount: 98 });
+
+      // Deadline goal (2 cycles → 50/cycle) with a smaller per-payday: larger wins.
+      const both = await request(app)
+        .post("/api/goals")
+        .set(u.auth)
+        .send({ name: "Eid", targetAmount: 100, deadline: "2026-08-10", perPaydayAmount: 10 });
+      expect(both.status).toBe(201);
+
+      const res = await request(app).get("/api/insights/safe-to-spend").set(u.auth).query({ date: "2026-06-10" });
+      expect(res.status).toBe(200);
+      expect(res.body.goalBuffers).toEqual([
+        { name: "Rainy day", amount: 25.5, deadline: null },
+        { name: "Nearly done", amount: 2, deadline: null },
+        { name: "Eid", amount: 50, deadline: "2026-08-10" },
+      ]);
+      expect(res.body.goalBuffersTotal).toBe(77.5);
+
+      // Clearing the per-payday amount removes the reservation.
+      const patch = await request(app)
+        .patch(`/api/goals/${rainy.body.id}`)
+        .set(u.auth)
+        .send({ perPaydayAmount: null });
+      expect(patch.status).toBe(200);
+      expect(patch.body.perPaydayAmount).toBeNull();
+      const after = await request(app).get("/api/insights/safe-to-spend").set(u.auth).query({ date: "2026-06-10" });
+      expect(after.body.goalBuffers.map((g: { name: string }) => g.name)).toEqual(["Nearly done", "Eid"]);
+    } finally {
+      await destroyTestUsers(u);
+    }
+  });
+
   it("stores and returns 3-decimal amounts exactly end to end", async () => {
     const u = await createTestUser("sts-3dp");
     try {
