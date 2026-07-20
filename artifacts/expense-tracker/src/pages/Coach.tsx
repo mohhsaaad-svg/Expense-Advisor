@@ -16,10 +16,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, MessageSquare, Plus, Trash2, Send, Flame, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useT } from "@/lib/i18n";
 
 export default function Coach() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const t = useT();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -60,7 +62,7 @@ export default function Coach() {
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListAnthropicConversationsQueryKey() });
-        toast({ title: "Conversation deleted" });
+        toast({ title: t("toast.conversationDeleted.title") });
       }
     }
   });
@@ -84,7 +86,7 @@ export default function Coach() {
   }, [activeConversation?.messages, streamedContent]);
 
   const handleStartNew = () => {
-    createConversation.mutate({ data: { title: "New Conversation" } });
+    createConversation.mutate({ data: { title: t("coach.newConversation") } });
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -188,11 +190,11 @@ export default function Coach() {
       <div className="w-full md:w-80 flex flex-col gap-4">
         <div>
           <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2 flex items-center gap-3">
-            Coach <Sparkles className="w-6 h-6 text-primary" />
+            {t('coach.title')} <Sparkles className="w-6 h-6 text-primary" />
           </h1>
-          <p className="text-sm text-muted-foreground font-light mb-4">Your personal money advisor.</p>
+          <p className="text-sm text-muted-foreground font-light mb-4">{t('coach.subtitle')}</p>
           <Button onClick={handleStartNew} className="w-full shadow-sm rounded-xl h-12" disabled={createConversation.isPending}>
-            <Plus className="w-4 h-4 mr-2" /> New Conversation
+            <Plus className="w-4 h-4 me-2" /> {t('coach.newConversation')}
           </Button>
         </div>
 
@@ -232,7 +234,7 @@ export default function Coach() {
             ))}
             {!loadingConversations && conversations?.length === 0 && (
               <div className="text-center p-6 text-sm text-muted-foreground border border-dashed rounded-xl bg-card/50">
-                No conversations yet. Start one to get advice!
+                {t('coach.noConversations')}
               </div>
             )}
           </div>
@@ -246,12 +248,12 @@ export default function Coach() {
             <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
               <Sparkles className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-serif font-bold mb-2">Ask Ember</h2>
+            <h2 className="text-2xl font-serif font-bold mb-2">{t('coach.askEmber')}</h2>
             <p className="text-muted-foreground max-w-sm mx-auto mb-8 font-light">
-              I know your budget, your goals, and your spending habits. Ask me anything about your money.
+              {t('coach.askEmberDesc')}
             </p>
             <Button onClick={handleStartNew} size="lg" className="rounded-full px-8 shadow-lg shadow-primary/20">
-              Start Chatting
+              {t('coach.startChatting')}
             </Button>
           </div>
         ) : (
@@ -259,7 +261,7 @@ export default function Coach() {
             <div className="p-4 border-b border-border bg-card/50 backdrop-blur flex justify-between items-center z-10 shrink-0">
               <div className="font-medium text-foreground flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />
-                {activeConversation?.title || "Conversation"}
+                {activeConversation?.title || t('coach.conversation')}
               </div>
             </div>
             
@@ -273,7 +275,7 @@ export default function Coach() {
                       )}>
                         {msg.role === "user" ? <Flame className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                       </div>
-                      <div className={cn(
+                      <div dir="auto" className={cn(
                         "p-4 rounded-2xl text-sm leading-relaxed",
                         msg.role === "user" 
                           ? "bg-primary text-primary-foreground rounded-tr-sm" 
@@ -291,9 +293,9 @@ export default function Coach() {
                       <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 shadow-sm bg-secondary text-secondary-foreground border border-border">
                         <Bot className="w-4 h-4 text-primary animate-pulse" />
                       </div>
-                      <div className="p-4 rounded-2xl text-sm leading-relaxed bg-secondary/50 text-foreground border border-primary/20 rounded-tl-sm whitespace-pre-wrap">
+                      <div dir="auto" className="p-4 rounded-2xl text-sm leading-relaxed bg-secondary/50 text-foreground border border-primary/20 rounded-tl-sm whitespace-pre-wrap">
                         {streamedContent}
-                        <span className="inline-block w-1.5 h-4 ml-1 bg-primary animate-pulse align-middle" />
+                        <span className="inline-block w-1.5 h-4 ms-1 bg-primary animate-pulse align-middle" />
                       </div>
                     </div>
                   </div>
@@ -308,8 +310,9 @@ export default function Coach() {
                   <Input
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Ask about your budget..."
+                    placeholder={t('coach.inputPlaceholder')}
                     className="border-0 bg-transparent shadow-none focus-visible:ring-0 px-4 py-6 text-base"
+                    dir="auto"
                     disabled={isStreaming}
                   />
                 </div>
@@ -319,7 +322,7 @@ export default function Coach() {
                   className="h-14 w-14 rounded-2xl shrink-0 shadow-sm"
                   disabled={!inputMessage.trim() || isStreaming}
                 >
-                  <Send className="w-5 h-5 ml-1" />
+                  <Send className="w-5 h-5 ms-1 rtl:-scale-x-100" />
                 </Button>
               </form>
             </div>

@@ -8,7 +8,6 @@ import {
   getGetSpendingStatsQueryKey,
   getGetSpendingTipsQueryKey,
 } from "@workspace/api-client-react";
-import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +19,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useT, categoryLabel } from "@/lib/i18n";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Food & Drink": <Coffee className="w-5 h-5" />,
@@ -62,10 +62,11 @@ export default function Expenses() {
   const deleteExpense = useDeleteExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { format } = useCurrency();
+  const { format, formatDate } = useCurrency();
+  const t = useT();
 
   const handleDelete = (id: number) => {
-    if (confirm("Are you sure you want to delete this expense?")) {
+    if (confirm(t("expenses.confirmDelete"))) {
       deleteExpense.mutate({ id }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
@@ -73,7 +74,7 @@ export default function Expenses() {
           queryClient.invalidateQueries({ queryKey: getGetWeeklySummaryQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
-          toast({ title: "Expense deleted", description: "The record has been removed." });
+          toast({ title: t("toast.expenseDeleted.title"), description: t("toast.expenseDeleted.desc") });
         }
       });
     }
@@ -97,30 +98,30 @@ export default function Expenses() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Logbook</h1>
-          <p className="text-lg text-muted-foreground font-light">Every ember tracked and categorized.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">{t('expenses.title')}</h1>
+          <p className="text-lg text-muted-foreground font-light">{t('expenses.subtitle')}</p>
         </div>
         <AddExpenseDialog />
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 bg-card p-3 rounded-2xl border border-card-border/60 shadow-sm">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute start-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Search by description or amount..." 
-            className="pl-11 bg-background/50 border-transparent focus-visible:ring-primary/20 h-12 rounded-xl text-base"
+            placeholder={t('expenses.searchPlaceholder')} 
+            className="ps-11 bg-background/50 border-transparent focus-visible:ring-primary/20 h-12 rounded-xl text-base"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-[220px] bg-background/50 border-transparent focus-visible:ring-primary/20 h-12 rounded-xl text-base font-medium">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder={t('common.allCategories')} />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            <SelectItem value="all" className="rounded-lg cursor-pointer">All Categories</SelectItem>
+            <SelectItem value="all" className="rounded-lg cursor-pointer">{t('common.allCategories')}</SelectItem>
             {CATEGORIES.map(c => (
-              <SelectItem key={c} value={c} className="rounded-lg cursor-pointer">{c}</SelectItem>
+              <SelectItem key={c} value={c} className="rounded-lg cursor-pointer">{categoryLabel(t, c)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -134,11 +135,11 @@ export default function Expenses() {
             <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6 shadow-inner">
               <Receipt className="w-10 h-10 text-muted-foreground/50" />
             </div>
-            <h3 className="text-2xl font-serif font-semibold text-foreground mb-2">No records found</h3>
+            <h3 className="text-2xl font-serif font-semibold text-foreground mb-2">{t('expenses.noRecords')}</h3>
             <p className="text-muted-foreground max-w-sm mx-auto">
               {search || categoryFilter !== "all" 
-                ? "Try clearing your search or filters to see your expenses." 
-                : "Your logbook is empty. Time to add your first expense."}
+                ? t('expenses.emptyFiltered')
+                : t('expenses.emptyDefault')}
             </p>
             {(search || categoryFilter !== "all") && (
               <Button 
@@ -146,7 +147,7 @@ export default function Expenses() {
                 className="mt-6 rounded-full"
                 onClick={() => { setSearch(""); setCategoryFilter("all"); }}
               >
-                Clear Filters
+                {t('expenses.clearFilters')}
               </Button>
             )}
           </div>
@@ -163,7 +164,7 @@ export default function Expenses() {
                       {formatDate(date)}
                     </h3>
                     <div className="text-sm font-medium text-muted-foreground">
-                      Total: <span className="text-foreground">{format(dayTotal)}</span>
+                      {t('common.total')} <span className="text-foreground">{format(dayTotal)}</span>
                     </div>
                   </div>
                   
@@ -180,12 +181,12 @@ export default function Expenses() {
                             </p>
                             <div className="flex items-center gap-3">
                               <Badge variant="secondary" className="font-medium bg-background border-border text-xs px-2.5 py-0.5 rounded-md">
-                                {expense.category}
+                                {categoryLabel(t, expense.category)}
                               </Badge>
                               {expense.recurringId != null && (
                                 <Badge variant="secondary" className="font-medium bg-primary/10 text-primary border-transparent text-xs px-2.5 py-0.5 rounded-md">
-                                  <Repeat className="w-3 h-3 mr-1" />
-                                  Auto
+                                  <Repeat className="w-3 h-3 me-1" />
+                                  {t('expenses.auto')}
                                 </Badge>
                               )}
                             </div>

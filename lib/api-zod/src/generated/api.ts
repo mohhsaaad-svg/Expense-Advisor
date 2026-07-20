@@ -401,6 +401,7 @@ export const DeleteRecurringExpenseResponse = zod.void()
 export const GetPreferencesResponse = zod.object({
   "id": zod.number(),
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })
@@ -416,12 +417,14 @@ export const updatePreferencesBodyAlertThresholdMax = 100;
 
 export const UpdatePreferencesBody = zod.object({
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "language": zod.enum(['en', 'ar']).optional(),
   "alertThreshold": zod.number().min(updatePreferencesBodyAlertThresholdMin).max(updatePreferencesBodyAlertThresholdMax)
 })
 
 export const UpdatePreferencesResponse = zod.object({
   "id": zod.number(),
   "currency": zod.enum(['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD']),
+  "language": zod.enum(['en', 'ar']).describe('UI + AI coach language (\"en\" default, \"ar\" enables RTL Arabic)'),
   "alertThreshold": zod.number().describe('Percent of daily limit at which warnings fire'),
   "updatedAt": zod.string().describe('ISO datetime string')
 })

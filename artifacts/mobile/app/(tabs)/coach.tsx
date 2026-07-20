@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ember/Skeleton';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { streamAdvisorReply } from '@/lib/sse';
+import { useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -29,12 +30,6 @@ import {
 } from '@workspace/api-client-react';
 import * as Haptics from 'expo-haptics';
 
-const SUGGESTIONS = [
-  'How am I doing this month?',
-  'Where can I cut back?',
-  'Help me plan the rest of this week',
-];
-
 /** Ember replies in markdown; keep mobile bubbles clean without a renderer. */
 function cleanMarkdown(s: string): string {
   return s
@@ -43,9 +38,16 @@ function cleanMarkdown(s: string): string {
     .replace(/^\s*[-*]\s+/gm, '• ');
 }
 
-function conversationDate(iso: string): string {
+function conversationDate(iso: string, lang: 'en' | 'ar'): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  try {
+    return d.toLocaleDateString(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
 }
 
 export default function CoachScreen() {
@@ -53,6 +55,18 @@ export default function CoachScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const scrollRef = useRef<ScrollView>(null);
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
+
+  const SUGGESTIONS = [
+    t('coach.suggestion1'),
+    t('coach.suggestion2'),
+    t('coach.suggestion3'),
+  ];
 
   // null = not decided yet (auto-pick latest); 'new' = explicit fresh chat
   const [activeId, setActiveId] = useState<number | 'new' | null>(null);
@@ -122,7 +136,7 @@ export default function CoachScreen() {
         queryKey: getListAnthropicConversationsQueryKey(),
       });
     } catch {
-      setErrorText("Something went wrong — try again.");
+      setErrorText(t('coach.somethingWrong'));
     } finally {
       setIsStreaming(false);
       setPending(null);
@@ -167,13 +181,17 @@ export default function CoachScreen() {
     >
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         {/* Header */}
-        <View style={[styles.header, { paddingTop: topPad }]}>
+        <View style={[styles.header, rowReverse, { paddingTop: topPad }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-              Coach
+            <Text
+              style={[styles.screenTitle, { color: colors.foreground }, rtlText]}
+            >
+              {t('coach.title')}
             </Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              Ember knows your numbers — ask away
+            <Text
+              style={[styles.subtitle, { color: colors.mutedForeground }, rtlText]}
+            >
+              {t('coach.subtitle')}
             </Text>
           </View>
           <Pressable
@@ -232,8 +250,8 @@ export default function CoachScreen() {
           {convoFailed ? (
             <EmptyState
               icon="cloud-offline-outline"
-              title="Couldn't load this chat"
-              actionLabel="Retry"
+              title={t('coach.couldntLoadChat')}
+              actionLabel={t('common.retry')}
               onAction={() => convo.refetch()}
             />
           ) : null}
@@ -255,14 +273,15 @@ export default function CoachScreen() {
                 >
                   <Ionicons name="flame" size={22} color={colors.primary} />
                 </View>
-                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                  Ask Ember
+                <Text
+                  style={[styles.emptyTitle, { color: colors.foreground }, rtlText]}
+                >
+                  {t('coach.askEmber')}
                 </Text>
                 <Text
-                  style={[styles.emptyText, { color: colors.mutedForeground }]}
+                  style={[styles.emptyText, { color: colors.mutedForeground }, rtlText]}
                 >
-                  Your coach sees your budget, spending and goals — answers are
-                  about your actual numbers, not generic advice.
+                  {t('coach.askEmberBody')}
                 </Text>
               </View>
               <View style={styles.chips}>
@@ -272,6 +291,7 @@ export default function CoachScreen() {
                     onPress={() => send(s)}
                     style={({ pressed }) => [
                       styles.chip,
+                      isRTL && { alignSelf: 'flex-end' },
                       {
                         backgroundColor: colors.accent,
                         opacity: pressed ? 0.7 : 1,
@@ -280,7 +300,11 @@ export default function CoachScreen() {
                     testID={`chip-prompt-${i}`}
                   >
                     <Text
-                      style={[styles.chipText, { color: colors.accentForeground }]}
+                      style={[
+                        styles.chipText,
+                        { color: colors.accentForeground },
+                        rtlText,
+                      ]}
                     >
                       {s}
                     </Text>
@@ -290,38 +314,50 @@ export default function CoachScreen() {
             </View>
           ) : null}
 
-          {serverMessages.map((m) => (
-            <View
-              key={m.id}
-              style={[
-                styles.bubble,
-                m.role === 'user'
-                  ? [styles.userBubble, { backgroundColor: colors.primary }]
-                  : [
-                      styles.assistantBubble,
-                      {
-                        backgroundColor: colors.card,
-                        borderColor: colors.border,
-                      },
-                    ],
-              ]}
-              testID={`message-${m.role}-${m.id}`}
-            >
-              <Text
+          {serverMessages.map((m) => {
+            const isUser = m.role === 'user';
+            // Mirror bubble sides in RTL: user on the left, assistant on the right.
+            const align = isUser
+              ? isRTL
+                ? 'flex-start'
+                : 'flex-end'
+              : isRTL
+                ? 'flex-end'
+                : 'flex-start';
+            return (
+              <View
+                key={m.id}
                 style={[
-                  styles.bubbleText,
-                  {
-                    color:
-                      m.role === 'user'
+                  styles.bubble,
+                  { alignSelf: align },
+                  isUser
+                    ? [styles.userBubble, { backgroundColor: colors.primary }]
+                    : [
+                        styles.assistantBubble,
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
+                      ],
+                ]}
+                testID={`message-${m.role}-${m.id}`}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    {
+                      color: isUser
                         ? colors.primaryForeground
                         : colors.foreground,
-                  },
-                ]}
-              >
-                {m.role === 'user' ? m.content : cleanMarkdown(m.content)}
-              </Text>
-            </View>
-          ))}
+                    },
+                    rtlText,
+                  ]}
+                >
+                  {isUser ? m.content : cleanMarkdown(m.content)}
+                </Text>
+              </View>
+            );
+          })}
 
           {pending ? (
             <>
@@ -329,11 +365,16 @@ export default function CoachScreen() {
                 style={[
                   styles.bubble,
                   styles.userBubble,
+                  { alignSelf: isRTL ? 'flex-start' : 'flex-end' },
                   { backgroundColor: colors.primary },
                 ]}
               >
                 <Text
-                  style={[styles.bubbleText, { color: colors.primaryForeground }]}
+                  style={[
+                    styles.bubbleText,
+                    { color: colors.primaryForeground },
+                    rtlText,
+                  ]}
                 >
                   {pending.user}
                 </Text>
@@ -342,24 +383,32 @@ export default function CoachScreen() {
                 style={[
                   styles.bubble,
                   styles.assistantBubble,
+                  { alignSelf: isRTL ? 'flex-end' : 'flex-start' },
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
                 testID="bubble-streaming"
               >
                 {pending.reply === '' ? (
-                  <View style={styles.thinkingRow}>
+                  <View style={[styles.thinkingRow, rowReverse]}>
                     <ActivityIndicator size="small" color={colors.primary} />
                     <Text
                       style={[
                         styles.thinkingText,
                         { color: colors.mutedForeground },
+                        rtlText,
                       ]}
                     >
-                      Ember is looking at your numbers…
+                      {t('coach.thinking')}
                     </Text>
                   </View>
                 ) : (
-                  <Text style={[styles.bubbleText, { color: colors.foreground }]}>
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      { color: colors.foreground },
+                      rtlText,
+                    ]}
+                  >
                     {cleanMarkdown(pending.reply)}
                   </Text>
                 )}
@@ -388,6 +437,7 @@ export default function CoachScreen() {
           <View
             style={[
               styles.inputWrap,
+              rowReverse,
               {
                 backgroundColor: colors.card,
                 borderColor: colors.input,
@@ -398,9 +448,9 @@ export default function CoachScreen() {
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder="Ask about your spending…"
+              placeholder={t('coach.inputPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
-              style={[styles.input, { color: colors.foreground }]}
+              style={[styles.input, { color: colors.foreground }, rtlText]}
               multiline
               editable={!isStreaming}
               testID="input-chat"
@@ -457,13 +507,16 @@ export default function CoachScreen() {
               style={[styles.sheetHandle, { backgroundColor: colors.border }]}
             />
           </View>
-          <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
-            Conversations
+          <Text
+            style={[styles.sheetTitle, { color: colors.foreground }, rtlText]}
+          >
+            {t('coach.conversations')}
           </Text>
           <Pressable
             onPress={startNewChat}
             style={({ pressed }) => [
               styles.newChatRow,
+              rowReverse,
               {
                 backgroundColor: colors.accent,
                 borderRadius: colorTokens.radius,
@@ -474,26 +527,31 @@ export default function CoachScreen() {
           >
             <Ionicons name="add" size={18} color={colors.accentForeground} />
             <Text style={[styles.newChatText, { color: colors.accentForeground }]}>
-              New chat
+              {t('coach.newChat')}
             </Text>
           </Pressable>
           <ScrollView style={{ maxHeight: 380 }}>
             {(conversations.data ?? []).length === 0 ? (
               <Text
-                style={[styles.sheetEmpty, { color: colors.mutedForeground }]}
+                style={[styles.sheetEmpty, { color: colors.mutedForeground }, rtlText]}
               >
-                Nothing yet — your chats will show up here.
+                {t('coach.historyEmpty')}
               </Text>
             ) : (
               (conversations.data ?? []).map((c) => (
                 <View
                   key={c.id}
-                  style={[styles.convoRow, { borderBottomColor: colors.border }]}
+                  style={[
+                    styles.convoRow,
+                    rowReverse,
+                    { borderBottomColor: colors.border },
+                  ]}
                 >
                   <Pressable
                     onPress={() => openConversation(c.id)}
                     style={({ pressed }) => [
                       styles.convoPressable,
+                      rowReverse,
                       { opacity: pressed ? 0.6 : 1 },
                     ]}
                     testID={`conversation-${c.id}`}
@@ -512,7 +570,7 @@ export default function CoachScreen() {
                       }
                     />
                     <Text
-                      style={[styles.convoTitle, { color: colors.foreground }]}
+                      style={[styles.convoTitle, { color: colors.foreground }, rtlText]}
                       numberOfLines={1}
                     >
                       {c.title}
@@ -520,7 +578,7 @@ export default function CoachScreen() {
                     <Text
                       style={[styles.convoDate, { color: colors.mutedForeground }]}
                     >
-                      {conversationDate(c.createdAt)}
+                      {conversationDate(c.createdAt, lang)}
                     </Text>
                   </Pressable>
                   <Pressable

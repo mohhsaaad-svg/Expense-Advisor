@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PreferencesInputCurrency } from './preferencesInputCurrency';
+import type { PreferencesInputLanguage } from './preferencesInputLanguage';
 
 export interface PreferencesInput {
   currency: PreferencesInputCurrency;
+  language?: PreferencesInputLanguage;
   /**
      * @minimum 50
      * @maximum 100

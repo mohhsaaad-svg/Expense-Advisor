@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategoryName, useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import type { Expense } from '@workspace/api-client-react';
 import { router } from 'expo-router';
@@ -10,33 +11,47 @@ import { router } from 'expo-router';
 export function ExpenseRow({ expense }: { expense: Expense }) {
   const colors = useColors();
   const { format } = useCurrency();
+  const t = useT();
+  const { isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
 
   return (
     <Pressable
       onPress={() => router.push(`/expense-form?id=${expense.id}`)}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+      style={({ pressed }) => [
+        styles.row,
+        isRTL && { flexDirection: 'row-reverse' },
+        { opacity: pressed ? 0.6 : 1 },
+      ]}
       testID={`expense-row-${expense.id}`}
     >
       <CategoryIcon category={expense.category} />
       <View style={styles.mid}>
         <Text
-          style={[styles.desc, { color: colors.foreground }]}
+          style={[styles.desc, { color: colors.foreground }, rtlText]}
           numberOfLines={1}
         >
           {expense.description}
         </Text>
-        <View style={styles.catLine}>
-          <Text style={[styles.cat, { color: colors.mutedForeground }]}>
-            {expense.category}
+        <View style={[styles.catLine, isRTL && { flexDirection: 'row-reverse' }]}>
+          <Text style={[styles.cat, { color: colors.mutedForeground }, rtlText]}>
+            {categoryName(expense.category)}
           </Text>
           {expense.recurringId != null ? (
             <View
-              style={[styles.autoBadge, { backgroundColor: colors.accent }]}
+              style={[
+                styles.autoBadge,
+                isRTL && { flexDirection: 'row-reverse' },
+                { backgroundColor: colors.accent },
+              ]}
               testID={`badge-auto-${expense.id}`}
             >
               <Ionicons name="repeat" size={10} color={colors.accentForeground} />
               <Text style={[styles.autoText, { color: colors.accentForeground }]}>
-                Auto
+                {t('expenses.auto')}
               </Text>
             </View>
           ) : null}

@@ -6,6 +6,7 @@
 - [Monorepo type visibility](workspace-typecheck.md) — after editing lib/* source, run root `pnpm run typecheck` (tsc --build); package-local tsc resolves stale composite declarations.
 - [API test recipe](api-testing-recipe.md) — vitest+supertest vs real dev DB: inline @workspace deps, NODE_ENV=test skips limiters/pretty-logger, mint sessions in DB + Bearer sid.
 - [Cycle-based stats contract](cycle-based-stats-contract.md) — SpendingStats "month" fields now mean salary-cycle when `cycleAnchored`; check it before writing "month" in UI copy.
+- [Arabic/RTL conventions](arabic-rtl-conventions.md) — Latin digits via `ar-u-nu-latn` everywhere; web flips via document dir + logical Tailwind classes; mobile uses explicit isRTL flag, never I18nManager.forceRTL. waitForJob timeout caps at 600s.
 - [Slides QA floor vs template chrome](slides-qa-vs-template.md) — hold deck content to ≥2vw body / ≥1.5vw labels; keep skill-template furniture at its shipped sizes.
 - [gitPush upstream workaround](github-push-upstream.md) — gitPush callback refuses when main tracks a subrepl remote (or has no upstream); re-point upstream to origin/main, push, restore.
 - [Vite config env gating](vite-config-env-gating.md) — PORT must be serve-only, BASE_PATH needs a canonical fallback; async defineConfig + local plugins hit a misleading TS2769.

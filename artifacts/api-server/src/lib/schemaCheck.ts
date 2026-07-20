@@ -59,4 +59,20 @@ export async function assertSchemaReady(): Promise<void> {
         `starting the server.`,
     );
   }
+
+  // Language preference column (Arabic/RTL support).
+  const language = await pool.query(
+    `SELECT 1
+       FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'preferences'
+        AND column_name = 'language'`,
+  );
+  if (language.rows.length === 0) {
+    throw new Error(
+      `Database schema is missing the preferences.language column. ` +
+        `Apply lib/db/migrations/0003_preferences_language.sql to this database ` +
+        `before starting the server.`,
+    );
+  }
 }

@@ -1,10 +1,19 @@
 import { router, Stack } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
+import { useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function NotFoundScreen() {
   const colors = useColors();
+  const t = useT();
+  const { isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'center' } as const)
+    : undefined;
+  const rowReverse = isRTL
+    ? ({ flexDirection: 'row-reverse' } as const)
+    : undefined;
 
   return (
     <>
@@ -13,16 +22,17 @@ export default function NotFoundScreen() {
         <View style={[styles.iconWrap, { backgroundColor: colors.accent }]}>
           <Ionicons name="flame-outline" size={30} color={colors.primary} />
         </View>
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Nothing burning here
+        <Text style={[styles.title, { color: colors.foreground }, rtlText]}>
+          {t('notFound.title')}
         </Text>
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
-          This screen doesn&apos;t exist — the embers must have drifted.
+        <Text style={[styles.message, { color: colors.mutedForeground }, rtlText]}>
+          {t('notFound.body')}
         </Text>
         <Pressable
           onPress={() => router.navigate('/')}
           style={({ pressed }) => [
             styles.button,
+            rowReverse,
             { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
           ]}
           testID="button-not-found-home"
@@ -33,7 +43,7 @@ export default function NotFoundScreen() {
             color={colors.primaryForeground}
           />
           <Text style={[styles.buttonText, { color: colors.primaryForeground }]}>
-            Back to Today
+            {t('notFound.back')}
           </Text>
         </Pressable>
       </View>

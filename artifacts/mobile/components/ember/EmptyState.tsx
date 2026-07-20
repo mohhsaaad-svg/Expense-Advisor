@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
+import { useLang } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 
@@ -16,14 +17,20 @@ interface Props {
 
 export function EmptyState({ icon, title, message, actionLabel, onAction }: Props) {
   const colors = useColors();
+  const { isRTL } = useLang();
+  const rtlText = isRTL ? ({ writingDirection: 'rtl' } as const) : undefined;
   return (
     <View style={styles.wrap}>
       <View style={[styles.iconWrap, { backgroundColor: colors.secondary }]}>
         <Ionicons name={icon} size={26} color={colors.mutedForeground} />
       </View>
-      <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+      <Text style={[styles.title, { color: colors.foreground }, rtlText]}>
+        {title}
+      </Text>
       {message ? (
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
+        <Text
+          style={[styles.message, { color: colors.mutedForeground }, rtlText]}
+        >
           {message}
         </Text>
       ) : null}

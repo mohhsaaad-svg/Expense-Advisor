@@ -1359,13 +1359,17 @@ components:
 
     Preferences:
       type: object
-      required: [id, currency, alertThreshold, updatedAt]
+      required: [id, currency, language, alertThreshold, updatedAt]
       properties:
         id:
           type: integer
         currency:
           type: string
           enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+        language:
+          type: string
+          enum: [en, ar]
+          description: UI + AI coach language ("en" default, "ar" enables RTL Arabic)
         alertThreshold:
           type: integer
           description: Percent of daily limit at which warnings fire
@@ -1380,6 +1384,9 @@ components:
         currency:
           type: string
           enum: [USD, EUR, GBP, JPY, INR, CAD, AUD]
+        language:
+          type: string
+          enum: [en, ar]
         alertThreshold:
           type: integer
           minimum: 50

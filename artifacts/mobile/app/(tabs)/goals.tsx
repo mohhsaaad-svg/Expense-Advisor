@@ -17,10 +17,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/ember/EmptyState';
 import { ProgressBar } from '@/components/ember/ProgressBar';
 import { Skeleton } from '@/components/ember/Skeleton';
-import { CATEGORIES, currencySymbol, toDateKey } from '@/constants/categories';
+import {
+  CATEGORIES,
+  currencySymbol,
+  fullDayLabel,
+  toDateKey,
+  type Lang,
+} from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategoryName, useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Challenge, Goal } from '@workspace/api-client-react';
@@ -39,10 +46,10 @@ import {
 import * as Haptics from 'expo-haptics';
 
 const DEADLINE_CHOICES = [
-  { label: 'No date', months: null },
-  { label: '3 months', months: 3 },
-  { label: '6 months', months: 6 },
-  { label: '1 year', months: 12 },
+  { key: 'goalForm.noDate' as const, months: null, tid: 'No-date' },
+  { key: 'goalForm.months3' as const, months: 3, tid: '3-months' },
+  { key: 'goalForm.months6' as const, months: 6, tid: '6-months' },
+  { key: 'goalForm.year1' as const, months: 12, tid: '1-year' },
 ] as const;
 
 const DURATION_CHOICES = [7, 14, 21, 30] as const;
@@ -54,16 +61,17 @@ function addMonths(base: Date, months: number): Date {
   return d;
 }
 
-function formatDay(key: string): string {
-  const d = new Date(`${key}T00:00:00`);
-  return d.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+function formatDay(key: string, lang: Lang): string {
+  return fullDayLabel(key, lang);
 }
 
-function confirmDelete(title: string, message: string, onConfirm: () => void) {
+function confirmDelete(
+  title: string,
+  message: string,
+  cancelText: string,
+  deleteText: string,
+  onConfirm: () => void,
+) {
   if (Platform.OS === 'web') {
     // RN's Alert is a no-op on web.
     // eslint-disable-next-line no-alert
@@ -71,8 +79,8 @@ function confirmDelete(title: string, message: string, onConfirm: () => void) {
     return;
   }
   Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: onConfirm },
+    { text: cancelText, style: 'cancel' },
+    { text: deleteText, style: 'destructive', onPress: onConfirm },
   ]);
 }
 
@@ -81,6 +89,13 @@ export default function GoalsScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { format, currency } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
 
   const todayKey = toDateKey(new Date());
   const goals = useListGoals({ query: { queryKey: getListGoalsQueryKey() } });
@@ -104,7 +119,12 @@ export default function GoalsScreen() {
     queryClient.invalidateQueries({ queryKey: getListChallengesQueryKey() });
 
   const removeGoal = (g: Goal) =>
-    confirmDelete('Delete goal?', `"${g.name}" and its saved progress go away.`, () =>
+    confirmDelete(
+      t('goals.deleteGoalTitle'),
+      t('goals.deleteGoalBody', { name: g.name }),
+      t('common.cancel'),
+      t('common.delete'),
+      () =>
       deleteGoal.mutate(
         { id: g.id },
         {
@@ -117,7 +137,12 @@ export default function GoalsScreen() {
     );
 
   const removeChallenge = (c: Challenge) =>
-    confirmDelete('Delete challenge?', `"${c.name}" will be removed.`, () =>
+    confirmDelete(
+      t('goals.deleteChallengeTitle'),
+      t('goals.deleteChallengeBody', { name: c.name }),
+      t('common.cancel'),
+      t('common.delete'),
+      () =>
       deleteChallenge.mutate(
         { id: c.id },
         {
@@ -151,15 +176,15 @@ export default function GoalsScreen() {
         }
         testID="screen-goals"
       >
-        <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-          Goals
+        <Text style={[styles.screenTitle, { color: colors.foreground }, rtlText]}>
+          {t('goals.title')}
         </Text>
 
         {/* Savings goals */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Savings goals
+          <View style={[styles.sectionHeader, rowReverse]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+              {t('goals.savingsGoals')}
             </Text>
             <Pressable
               onPress={() => {
@@ -168,13 +193,14 @@ export default function GoalsScreen() {
               }}
               style={({ pressed }) => [
                 styles.newBtn,
+                rowReverse,
                 { backgroundColor: colors.accent, opacity: pressed ? 0.7 : 1 },
               ]}
               testID="button-new-goal"
             >
               <Ionicons name="add" size={15} color={colors.accentForeground} />
               <Text style={[styles.newBtnText, { color: colors.accentForeground }]}>
-                New
+                {t('common.new')}
               </Text>
             </Pressable>
           </View>
@@ -198,8 +224,8 @@ export default function GoalsScreen() {
           ) : goals.isError ? (
             <EmptyState
               icon="cloud-offline-outline"
-              title="Couldn't load goals"
-              actionLabel="Retry"
+              title={t('goals.couldntLoadGoals')}
+              actionLabel={t('common.retry')}
               onAction={() => goals.refetch()}
             />
           ) : (goals.data ?? []).length === 0 ? (
@@ -215,9 +241,9 @@ export default function GoalsScreen() {
             >
               <EmptyState
                 icon="flag-outline"
-                title="Nothing you're saving for yet"
-                message="Give your money a destination — a trip, an emergency fund, a new bike. Ember tracks the progress and the coach keeps it in mind."
-                actionLabel="Start a goal"
+                title={t('goals.nothingSaving')}
+                message={t('goals.nothingSavingBody')}
+                actionLabel={t('goals.startGoal')}
                 onAction={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setGoalModal({ mode: 'create' });
@@ -244,16 +270,20 @@ export default function GoalsScreen() {
                   ]}
                   testID={`goal-card-${g.id}`}
                 >
-                  <View style={styles.cardTopRow}>
+                  <View style={[styles.cardTopRow, rowReverse]}>
                     <Text
-                      style={[styles.goalName, { color: colors.foreground }]}
+                      style={[styles.goalName, { color: colors.foreground }, rtlText]}
                       numberOfLines={1}
                     >
                       {g.name}
                     </Text>
                     {reached ? (
                       <View
-                        style={[styles.badge, { backgroundColor: colors.accent }]}
+                        style={[
+                          styles.badge,
+                          rowReverse,
+                          { backgroundColor: colors.accent },
+                        ]}
                       >
                         <Ionicons name="flame" size={11} color={colors.primary} />
                         <Text
@@ -262,7 +292,7 @@ export default function GoalsScreen() {
                             { color: colors.accentForeground },
                           ]}
                         >
-                          Reached
+                          {t('goals.reached')}
                         </Text>
                       </View>
                     ) : null}
@@ -281,14 +311,24 @@ export default function GoalsScreen() {
                       />
                     </Pressable>
                   </View>
-                  <Text style={[styles.goalMeta, { color: colors.mutedForeground }]}>
-                    {format(g.savedAmount)} of {format(g.targetAmount)} · {pct}%
-                    {g.deadline ? ` · by ${formatDay(g.deadline)}` : ''}
+                  <Text style={[styles.goalMeta, { color: colors.mutedForeground }, rtlText]}>
+                    {g.deadline
+                      ? t('goals.goalMetaBy', {
+                          saved: format(g.savedAmount),
+                          target: format(g.targetAmount),
+                          pct,
+                          date: formatDay(g.deadline, lang),
+                        })
+                      : t('goals.goalMeta', {
+                          saved: format(g.savedAmount),
+                          target: format(g.targetAmount),
+                          pct,
+                        })}
                   </Text>
                   <View style={{ marginTop: 10 }}>
                     <ProgressBar percent={pct} height={10} />
                   </View>
-                  <View style={styles.goalActions}>
+                  <View style={[styles.goalActions, rowReverse]}>
                     <Pressable
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -296,6 +336,7 @@ export default function GoalsScreen() {
                       }}
                       style={({ pressed }) => [
                         styles.actionBtn,
+                        rowReverse,
                         {
                           backgroundColor: colors.primary,
                           opacity: pressed ? 0.85 : 1,
@@ -314,7 +355,7 @@ export default function GoalsScreen() {
                           { color: colors.primaryForeground },
                         ]}
                       >
-                        Add money
+                        {t('goals.addMoney')}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -324,6 +365,7 @@ export default function GoalsScreen() {
                       }}
                       style={({ pressed }) => [
                         styles.actionBtn,
+                        rowReverse,
                         {
                           backgroundColor: colors.secondary,
                           opacity: pressed ? 0.7 : 1,
@@ -342,7 +384,7 @@ export default function GoalsScreen() {
                           { color: colors.secondaryForeground },
                         ]}
                       >
-                        Edit
+                        {t('common.edit')}
                       </Text>
                     </Pressable>
                   </View>
@@ -354,9 +396,9 @@ export default function GoalsScreen() {
 
         {/* No-spend challenges */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              No-spend challenges
+          <View style={[styles.sectionHeader, rowReverse]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+              {t('goals.noSpendChallenges')}
             </Text>
             <Pressable
               onPress={() => {
@@ -365,13 +407,14 @@ export default function GoalsScreen() {
               }}
               style={({ pressed }) => [
                 styles.newBtn,
+                rowReverse,
                 { backgroundColor: colors.accent, opacity: pressed ? 0.7 : 1 },
               ]}
               testID="button-new-challenge"
             >
               <Ionicons name="add" size={15} color={colors.accentForeground} />
               <Text style={[styles.newBtnText, { color: colors.accentForeground }]}>
-                New
+                {t('common.new')}
               </Text>
             </Pressable>
           </View>
@@ -395,8 +438,8 @@ export default function GoalsScreen() {
           ) : challenges.isError ? (
             <EmptyState
               icon="cloud-offline-outline"
-              title="Couldn't load challenges"
-              actionLabel="Retry"
+              title={t('goals.couldntLoadChallenges')}
+              actionLabel={t('common.retry')}
               onAction={() => challenges.refetch()}
             />
           ) : (challenges.data ?? []).length === 0 ? (
@@ -412,9 +455,9 @@ export default function GoalsScreen() {
             >
               <EmptyState
                 icon="trophy-outline"
-                title="No challenges running"
-                message="Try a week without takeout or a no-shopping month. Log an expense in that category and the streak breaks — honest accountability."
-                actionLabel="Start a challenge"
+                title={t('goals.noChallenges')}
+                message={t('goals.noChallengesBody')}
+                actionLabel={t('goals.startChallenge')}
                 onAction={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   setChallengeOpen(true);
@@ -429,10 +472,10 @@ export default function GoalsScreen() {
                   : 0;
               const statusStyle =
                 c.status === 'active'
-                  ? { bg: colors.accent, fg: colors.accentForeground, label: 'Active' }
+                  ? { bg: colors.accent, fg: colors.accentForeground, label: t('goals.statusActive') }
                   : c.status === 'completed'
-                    ? { bg: `${colors.success}1A`, fg: colors.success, label: 'Done' }
-                    : { bg: `${colors.destructive}14`, fg: colors.destructive, label: 'Broken' };
+                    ? { bg: `${colors.success}1A`, fg: colors.success, label: t('goals.statusDone') }
+                    : { bg: `${colors.destructive}14`, fg: colors.destructive, label: t('goals.statusBroken') };
               const notStarted = c.startDate > todayKey;
               return (
                 <View
@@ -447,9 +490,9 @@ export default function GoalsScreen() {
                   ]}
                   testID={`challenge-card-${c.id}`}
                 >
-                  <View style={styles.cardTopRow}>
+                  <View style={[styles.cardTopRow, rowReverse]}>
                     <Text
-                      style={[styles.goalName, { color: colors.foreground }]}
+                      style={[styles.goalName, { color: colors.foreground }, rtlText]}
                       numberOfLines={1}
                     >
                       {c.name}
@@ -474,9 +517,14 @@ export default function GoalsScreen() {
                       />
                     </Pressable>
                   </View>
-                  <Text style={[styles.goalMeta, { color: colors.mutedForeground }]}>
-                    {c.category ?? 'All spending'} · {c.durationDays} days · from{' '}
-                    {formatDay(c.startDate)}
+                  <Text style={[styles.goalMeta, { color: colors.mutedForeground }, rtlText]}>
+                    {t('goals.challengeMeta', {
+                      category: c.category
+                        ? categoryName(c.category)
+                        : t('goals.allSpending'),
+                      days: c.durationDays,
+                      date: formatDay(c.startDate, lang),
+                    })}
                   </Text>
                   {c.status === 'active' ? (
                     <>
@@ -484,25 +532,29 @@ export default function GoalsScreen() {
                         <ProgressBar percent={pct} height={10} />
                       </View>
                       <Text
-                        style={[styles.challengeState, { color: colors.success }]}
+                        style={[styles.challengeState, { color: colors.success }, rtlText]}
                       >
                         {notStarted
-                          ? `Starts ${formatDay(c.startDate)}`
-                          : `Day ${Math.max(1, c.daysElapsed)} of ${c.durationDays} — clean so far`}
+                          ? t('goals.startsOn', { date: formatDay(c.startDate, lang) })
+                          : t('goals.dayOfClean', {
+                              day: Math.max(1, c.daysElapsed),
+                              total: c.durationDays,
+                            })}
                       </Text>
                     </>
                   ) : c.status === 'completed' ? (
                     <Text
-                      style={[styles.challengeState, { color: colors.success }]}
+                      style={[styles.challengeState, { color: colors.success }, rtlText]}
                     >
-                      Finished clean — {c.durationDays} days without a slip
+                      {t('goals.finishedClean', { days: c.durationDays })}
                     </Text>
                   ) : (
                     <Text
-                      style={[styles.challengeState, { color: colors.destructive }]}
+                      style={[styles.challengeState, { color: colors.destructive }, rtlText]}
                     >
-                      {c.violations} slip{c.violations === 1 ? '' : 's'} logged —
-                      delete it and go again
+                      {c.violations === 1
+                        ? t('goals.slipsOne', { n: c.violations })
+                        : t('goals.slipsOther', { n: c.violations })}
                     </Text>
                   )}
                 </View>
@@ -566,6 +618,10 @@ function SheetShell({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior="padding" style={styles.sheetFlex}>
@@ -582,7 +638,7 @@ function SheetShell({
           <View style={styles.sheetHandleWrap}>
             <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
           </View>
-          <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
+          <Text style={[styles.sheetTitle, { color: colors.foreground }, rtlText]}>
             {title}
           </Text>
           {children}
@@ -604,6 +660,12 @@ function GoalFormModal({
   onSaved: () => void;
 }) {
   const colors = useColors();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
 
@@ -653,15 +715,18 @@ function GoalFormModal({
   };
 
   return (
-    <SheetShell title={goal ? 'Edit goal' : 'New goal'} onClose={onClose}>
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>Name</Text>
+    <SheetShell title={goal ? t('goalForm.editGoal') : t('goalForm.newGoal')} onClose={onClose}>
+      <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+        {t('goalForm.name')}
+      </Text>
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="Emergency fund"
+        placeholder={t('goalForm.namePlaceholder')}
         placeholderTextColor={colors.mutedForeground}
         style={[
           styles.sheetInput,
+          rtlText,
           {
             color: colors.foreground,
             borderColor: colors.input,
@@ -672,12 +737,13 @@ function GoalFormModal({
         testID="input-goal-name"
       />
 
-      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
-        Target amount
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+        {t('goalForm.targetAmount')}
       </Text>
       <View
         style={[
           styles.amountWrap,
+          rowReverse,
           {
             borderColor: colors.input,
             backgroundColor: colors.card,
@@ -699,15 +765,17 @@ function GoalFormModal({
         />
       </View>
 
-      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
-        Target date{goal?.deadline ? ` — currently ${formatDay(goal.deadline)}` : ''}
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+        {goal?.deadline
+          ? t('goalForm.targetDateCurrent', { date: formatDay(goal.deadline, lang) })
+          : t('goalForm.targetDate')}
       </Text>
-      <View style={styles.chipRow}>
+      <View style={[styles.chipRow, rowReverse]}>
         {DEADLINE_CHOICES.map((c) => {
           const active = selectedDeadlineLabel(c.months);
           return (
             <Pressable
-              key={c.label}
+              key={c.key}
               onPress={() => {
                 Haptics.selectionAsync();
                 setDeadline(
@@ -718,7 +786,7 @@ function GoalFormModal({
                 styles.choiceChip,
                 { backgroundColor: active ? colors.primary : colors.secondary },
               ]}
-              testID={`chip-deadline-${c.label.replace(/\s/g, '-')}`}
+              testID={`chip-deadline-${c.tid}`}
             >
               <Text
                 style={[
@@ -730,7 +798,7 @@ function GoalFormModal({
                   },
                 ]}
               >
-                {c.label}
+                {t(c.key)}
               </Text>
             </Pressable>
           );
@@ -753,13 +821,13 @@ function GoalFormModal({
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
           <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-            {goal ? 'Save changes' : 'Start saving'}
+            {goal ? t('common.saveChanges') : t('goalForm.startSaving')}
           </Text>
         )}
       </Pressable>
       {failed ? (
         <Text style={[styles.errorText, { color: colors.destructive }]}>
-          Couldn't save — please try again.
+          {t('common.saveErrorRetry')}
         </Text>
       ) : null}
     </SheetShell>
@@ -780,6 +848,12 @@ function ContributeModal({
   onSaved: () => void;
 }) {
   const colors = useColors();
+  const t = useT();
+  const { isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
   const contribute = useContributeToGoal();
   const [amount, setAmount] = useState('');
   const [direction, setDirection] = useState<'add' | 'withdraw'>('add');
@@ -807,11 +881,14 @@ function ContributeModal({
 
   return (
     <SheetShell title={goal.name} onClose={onClose}>
-      <Text style={[styles.contributeMeta, { color: colors.mutedForeground }]}>
-        {format(goal.savedAmount)} saved of {format(goal.targetAmount)}
+      <Text style={[styles.contributeMeta, { color: colors.mutedForeground }, rtlText]}>
+        {t('contribute.savedOf', {
+          saved: format(goal.savedAmount),
+          target: format(goal.targetAmount),
+        })}
       </Text>
 
-      <View style={[styles.segmentWrap, { backgroundColor: colors.secondary }]}>
+      <View style={[styles.segmentWrap, rowReverse, { backgroundColor: colors.secondary }]}>
         {(['add', 'withdraw'] as const).map((d) => {
           const active = direction === d;
           const disabled = d === 'withdraw' && !canWithdraw;
@@ -841,7 +918,7 @@ function ContributeModal({
                   },
                 ]}
               >
-                {d === 'add' ? 'Add money' : 'Withdraw'}
+                {d === 'add' ? t('contribute.add') : t('contribute.withdraw')}
               </Text>
             </Pressable>
           );
@@ -851,6 +928,7 @@ function ContributeModal({
       <View
         style={[
           styles.amountWrap,
+          rowReverse,
           {
             borderColor: colors.input,
             backgroundColor: colors.card,
@@ -874,7 +952,7 @@ function ContributeModal({
         />
       </View>
 
-      <View style={styles.chipRow}>
+      <View style={[styles.chipRow, rowReverse]}>
         {QUICK_AMOUNTS.map((a) => (
           <Pressable
             key={a}
@@ -928,13 +1006,13 @@ function ContributeModal({
               },
             ]}
           >
-            {direction === 'add' ? 'Add to goal' : 'Withdraw'}
+            {direction === 'add' ? t('contribute.addToGoal') : t('contribute.withdraw')}
           </Text>
         )}
       </Pressable>
       {contribute.isError ? (
         <Text style={[styles.errorText, { color: colors.destructive }]}>
-          Couldn't update — please try again.
+          {t('contribute.updateErrorRetry')}
         </Text>
       ) : null}
     </SheetShell>
@@ -951,6 +1029,13 @@ function ChallengeFormModal({
   onSaved: () => void;
 }) {
   const colors = useColors();
+  const t = useT();
+  const { isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
   const createChallenge = useCreateChallenge();
   const [name, setName] = useState('');
   const [durationDays, setDurationDays] = useState<number>(7);
@@ -980,15 +1065,18 @@ function ChallengeFormModal({
   };
 
   return (
-    <SheetShell title="New challenge" onClose={onClose}>
-      <Text style={[styles.label, { color: colors.mutedForeground }]}>Name</Text>
+    <SheetShell title={t('challengeForm.title')} onClose={onClose}>
+      <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+        {t('challengeForm.name')}
+      </Text>
       <TextInput
         value={name}
         onChangeText={setName}
-        placeholder="No takeout week"
+        placeholder={t('challengeForm.namePlaceholder')}
         placeholderTextColor={colors.mutedForeground}
         style={[
           styles.sheetInput,
+          rtlText,
           {
             color: colors.foreground,
             borderColor: colors.input,
@@ -999,10 +1087,10 @@ function ChallengeFormModal({
         testID="input-challenge-name"
       />
 
-      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
-        Length
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+        {t('challengeForm.length')}
       </Text>
-      <View style={styles.chipRow}>
+      <View style={[styles.chipRow, rowReverse]}>
         {DURATION_CHOICES.map((d) => {
           const active = durationDays === d;
           return (
@@ -1028,15 +1116,15 @@ function ChallengeFormModal({
                   },
                 ]}
               >
-                {d} days
+                {t('challengeForm.daysN', { n: d })}
               </Text>
             </Pressable>
           );
         })}
       </View>
 
-      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
-        What's off limits
+      <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+        {t('challengeForm.offLimits')}
       </Text>
       <ScrollView
         horizontal
@@ -1068,7 +1156,7 @@ function ChallengeFormModal({
               },
             ]}
           >
-            Everything
+            {t('challengeForm.everything')}
           </Text>
         </Pressable>
         {CATEGORIES.map((c) => {
@@ -1096,7 +1184,7 @@ function ChallengeFormModal({
                   },
                 ]}
               >
-                {c.name}
+                {categoryName(c.name)}
               </Text>
             </Pressable>
           );
@@ -1119,13 +1207,13 @@ function ChallengeFormModal({
           <ActivityIndicator color={colors.primaryForeground} />
         ) : (
           <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-            Start challenge
+            {t('challengeForm.startChallenge')}
           </Text>
         )}
       </Pressable>
       {createChallenge.isError ? (
         <Text style={[styles.errorText, { color: colors.destructive }]}>
-          Couldn't create — please try again.
+          {t('challengeForm.createErrorRetry')}
         </Text>
       ) : null}
     </SheetShell>

@@ -13,6 +13,7 @@ import Recurring from '@/pages/Recurring';
 import Goals from '@/pages/Goals';
 import Coach from '@/pages/Coach';
 import { Flame } from 'lucide-react';
+import { I18nProvider, useT } from '@/lib/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +25,12 @@ const queryClient = new QueryClient({
 });
 
 function NotFound() {
+  const t = useT();
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
       <h1 className="text-8xl font-serif font-bold text-primary mb-6">404</h1>
-      <h2 className="text-3xl font-serif text-foreground mb-4">Page Not Found</h2>
-      <p className="text-muted-foreground text-lg max-w-md">The page you are looking for has been moved or no longer exists.</p>
+      <h2 className="text-3xl font-serif text-foreground mb-4">{t('notFound.title')}</h2>
+      <p className="text-muted-foreground text-lg max-w-md">{t('notFound.subtitle')}</p>
     </div>
   );
 }
@@ -49,6 +51,7 @@ function Router() {
 
 function AuthGate() {
   const { user, isLoading, isAuthenticated, login } = useAuth();
+  const t = useT();
 
   // With embedded (iframe) login/logout the page is never reloaded, so cached
   // user-scoped queries would survive a session change. Clear them whenever
@@ -89,10 +92,10 @@ function AuthGate() {
             </div>
             
             <h1 className="text-5xl md:text-6xl font-serif font-bold text-foreground leading-[1.1] mb-6 tracking-tight">
-              Keep your spending from catching fire.
+              {t('auth.headline')}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed font-light">
-              Small daily expenses are like embers: harmless while you keep an eye on them, costly when you don't.
+              {t('auth.subtitle')}
             </p>
             <Button 
               onClick={login} 
@@ -100,8 +103,8 @@ function AuthGate() {
               className="text-lg h-14 px-8 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 group"
               data-testid="button-login"
             >
-              Sign In to Ember
-              <Flame className="w-5 h-5 ml-2 group-hover:scale-110 transition-transform" />
+              {t('auth.signIn')}
+              <Flame className="w-5 h-5 ms-2 group-hover:scale-110 transition-transform" />
             </Button>
           </div>
         </div>
@@ -127,12 +130,14 @@ function AuthGate() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <AuthGate />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <I18nProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <AuthGate />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

@@ -17,6 +17,7 @@ import { CATEGORIES, currencySymbol, dateLabel, toDateKey } from '@/constants/ca
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategoryName, useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -34,15 +35,15 @@ import {
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 
-const FREQUENCIES = [
-  { value: 'daily', label: 'Daily', hint: 'every day' },
-  { value: 'weekly', label: 'Weekly', hint: 'same weekday' },
-  { value: 'monthly', label: 'Monthly', hint: 'same day each month' },
-  { value: 'quarterly', label: 'Quarterly', hint: 'every 3 months' },
-  { value: 'yearly', label: 'Yearly', hint: 'once a year' },
+const FREQUENCY_VALUES = [
+  'daily',
+  'weekly',
+  'monthly',
+  'quarterly',
+  'yearly',
 ] as const;
 
-type FrequencyValue = (typeof FREQUENCIES)[number]['value'];
+type FrequencyValue = (typeof FREQUENCY_VALUES)[number];
 
 function lastDays(n: number): string[] {
   const out: string[] = [];
@@ -59,6 +60,19 @@ export default function RecurringFormScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { currency } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const FREQUENCIES = [
+    { value: 'daily', label: t('recurringForm.daily'), hint: t('recurringForm.dailyHint') },
+    { value: 'weekly', label: t('recurringForm.weekly'), hint: t('recurringForm.weeklyHint') },
+    { value: 'monthly', label: t('recurringForm.monthly'), hint: t('recurringForm.monthlyHint') },
+    { value: 'quarterly', label: t('recurringForm.quarterly'), hint: t('recurringForm.quarterlyHint') },
+    { value: 'yearly', label: t('recurringForm.yearly'), hint: t('recurringForm.yearlyHint') },
+  ] as const;
   const params = useLocalSearchParams<{ id?: string }>();
   const ruleId = params.id ? parseInt(params.id, 10) : undefined;
   const isEdit = ruleId !== undefined && !Number.isNaN(ruleId);
@@ -146,12 +160,12 @@ export default function RecurringFormScreen() {
   const handleDelete = () => {
     if (!isEdit || ruleId === undefined) return;
     Alert.alert(
-      'Delete ritual',
-      'Ember stops logging it. Entries already in your logbook stay.',
+      t('recurringForm.deleteTitle'),
+      t('recurringForm.deleteBody'),
       [
-        { text: 'Keep it', style: 'cancel' },
+        { text: t('common.keepIt'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             deleteRule.mutate(
@@ -184,7 +198,13 @@ export default function RecurringFormScreen() {
       testID="screen-recurring-form"
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad }]}>
+      <View
+        style={[
+          styles.header,
+          isRTL && { flexDirection: 'row-reverse' },
+          { paddingTop: topPad },
+        ]}
+      >
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 6 })}
@@ -193,7 +213,7 @@ export default function RecurringFormScreen() {
           <Ionicons name="close" size={26} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {isEdit ? 'Edit ritual' : 'New ritual'}
+          {isEdit ? t('recurringForm.edit') : t('recurringForm.new')}
         </Text>
         {isEdit ? (
           <Pressable
@@ -236,7 +256,7 @@ export default function RecurringFormScreen() {
               value={amount}
               onChangeText={setAmountDraft}
               keyboardType="decimal-pad"
-              placeholder="0.00"
+              placeholder={t('form.amountPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoFocus={!isEdit}
               style={[styles.amountInput, { color: colors.foreground }]}
@@ -245,13 +265,13 @@ export default function RecurringFormScreen() {
           </View>
 
           {/* Name */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Name
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('recurringForm.name')}
           </Text>
           <TextInput
             value={description}
             onChangeText={setDescDraft}
-            placeholder="Netflix, rent, gym…"
+            placeholder={t('recurringForm.namePlaceholder')}
             placeholderTextColor={colors.mutedForeground}
             style={[
               styles.descInput,
@@ -261,15 +281,16 @@ export default function RecurringFormScreen() {
                 borderColor: colors.border,
                 borderRadius: colorTokens.radius - 2,
               },
+              rtlText,
             ]}
             testID="input-recurring-description"
           />
 
           {/* Frequency */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Repeats
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('recurringForm.repeats')}
           </Text>
-          <View style={styles.freqRow}>
+          <View style={[styles.freqRow, isRTL && { flexDirection: 'row-reverse' }]}>
             {FREQUENCIES.map((f) => {
               const active = frequency === f.value;
               return (
@@ -313,8 +334,8 @@ export default function RecurringFormScreen() {
           </View>
 
           {/* Category grid */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Category
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('recurringForm.category')}
           </Text>
           <View style={styles.catGrid}>
             {CATEGORIES.map((c) => {
@@ -328,6 +349,7 @@ export default function RecurringFormScreen() {
                   }}
                   style={[
                     styles.catChip,
+                    isRTL && { flexDirection: 'row-reverse' },
                     {
                       backgroundColor: active ? colors.accent : colors.card,
                       borderColor: active ? c.color : colors.border,
@@ -352,7 +374,7 @@ export default function RecurringFormScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {c.name}
+                    {categoryName(c.name)}
                   </Text>
                 </Pressable>
               );
@@ -360,8 +382,8 @@ export default function RecurringFormScreen() {
           </View>
 
           {/* Start date */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Starts on
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('recurringForm.startsOn')}
           </Text>
           <ScrollView
             horizontal
@@ -392,7 +414,7 @@ export default function RecurringFormScreen() {
                       },
                     ]}
                   >
-                    {dateLabel(d)}
+                    {dateLabel(d, lang)}
                   </Text>
                 </Pressable>
               );
@@ -403,6 +425,7 @@ export default function RecurringFormScreen() {
             <View
               style={[
                 styles.hintCard,
+                isRTL && { flexDirection: 'row-reverse' },
                 { backgroundColor: colors.accent, borderRadius: colorTokens.radius - 2 },
               ]}
             >
@@ -411,16 +434,21 @@ export default function RecurringFormScreen() {
                 size={16}
                 color={colors.accentForeground}
               />
-              <Text style={[styles.hintText, { color: colors.accentForeground }]}>
-                Ember will log every occurrence since{' '}
-                {dateLabel(startDate)} the moment you save.
+              <Text
+                style={[
+                  styles.hintText,
+                  { color: colors.accentForeground },
+                  rtlText,
+                ]}
+              >
+                {t('recurringForm.backfillHint', { date: dateLabel(startDate, lang) })}
               </Text>
             </View>
           ) : null}
 
           {saveError ? (
             <Text style={[styles.errorText, { color: colors.destructive }]}>
-              Couldn't save — check the fields and try again.
+              {t('expenseForm.saveErrorFields')}
             </Text>
           ) : null}
         </KeyboardAwareScrollViewCompat>
@@ -433,6 +461,7 @@ export default function RecurringFormScreen() {
           disabled={!isValid || pending}
           style={({ pressed }) => [
             styles.saveBtn,
+            isRTL && { flexDirection: 'row-reverse' },
             {
               backgroundColor: colors.primary,
               opacity: !isValid || pending ? 0.45 : pressed ? 0.85 : 1,
@@ -450,7 +479,7 @@ export default function RecurringFormScreen() {
                 color={colors.primaryForeground}
               />
               <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-                {isEdit ? 'Save changes' : 'Start the ritual'}
+                {isEdit ? t('common.saveChanges') : t('recurringForm.startRitual')}
               </Text>
             </>
           )}

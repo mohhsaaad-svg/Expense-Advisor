@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
+import { useLang } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 
@@ -15,6 +16,10 @@ interface Props {
 
 export function TipCard({ type, title, message }: Props) {
   const colors = useColors();
+  const { isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
 
   const meta: Record<string, { icon: IoniconName; color: string }> = {
     alert: { icon: 'alert-circle', color: colors.destructive },
@@ -28,6 +33,7 @@ export function TipCard({ type, title, message }: Props) {
     <View
       style={[
         styles.card,
+        isRTL && { flexDirection: 'row-reverse' },
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
@@ -42,10 +48,10 @@ export function TipCard({ type, title, message }: Props) {
         <Ionicons name={m.icon} size={18} color={m.color} />
       </View>
       <View style={styles.body}>
-        <Text style={[styles.title, { color: colors.foreground }]}>
+        <Text style={[styles.title, { color: colors.foreground }, rtlText]}>
           {title}
         </Text>
-        <Text style={[styles.message, { color: colors.mutedForeground }]}>
+        <Text style={[styles.message, { color: colors.mutedForeground }, rtlText]}>
           {message}
         </Text>
       </View>

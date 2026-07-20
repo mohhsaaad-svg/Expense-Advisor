@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
 import { cn, localDateKey } from "@/lib/utils";
 import { CalendarDays, Flame, Gauge, TrendingUp } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export function StatCards() {
   const todayKey = localDateKey();
@@ -17,6 +18,7 @@ export function StatCards() {
     },
   );
   const { format } = useCurrency();
+  const t = useT();
 
   if (isLoading || !stats) {
     return (
@@ -33,43 +35,46 @@ export function StatCards() {
   const cards = [
     {
       key: "mtd",
-      label: "Month so far",
+      label: t("stats.monthSoFar"),
       icon: <CalendarDays className="w-4 h-4" />,
       value: <CountUp value={stats.monthToDate} format={format} />,
-      sub: `${stats.monthPercentUsed}% of your ceiling`,
+      sub: t("stats.ofCeiling", { percent: stats.monthPercentUsed }),
       subClass: stats.monthPercentUsed >= 90 ? "text-destructive font-semibold" : "",
     },
     {
       key: "projection",
-      label: "Projected month-end",
+      label: t("stats.projectedMonthEnd"),
       icon: <TrendingUp className="w-4 h-4" />,
       value: <CountUp value={stats.projectedMonthEnd} format={format} />,
-      sub: overPace ? "On pace to exceed your ceiling" : "On pace to stay under",
+      sub: overPace ? t("stats.onPaceExceed") : t("stats.onPaceUnder"),
       subClass: overPace ? "text-destructive font-semibold" : "text-primary font-medium",
     },
     {
       key: "streak",
-      label: "Under-budget streak",
+      label: t("stats.underBudgetStreak"),
       icon: (
         <Flame className={cn("w-4 h-4", stats.underBudgetStreak >= 3 && "fill-current")} />
       ),
       value: (
         <span>
           <CountUp value={stats.underBudgetStreak} />
-          <span className="text-xl text-muted-foreground font-light ml-2">
-            day{stats.underBudgetStreak === 1 ? "" : "s"}
+          <span className="text-xl text-muted-foreground font-light ms-2">
+            {stats.underBudgetStreak === 1 ? t("stats.day") : t("stats.days")}
           </span>
         </span>
       ),
-      sub: "at or under your daily limit",
+      sub: t("stats.atOrUnder"),
       subClass: "",
     },
     {
       key: "avg",
-      label: "Average per day",
+      label: t("stats.avgPerDay"),
       icon: <Gauge className="w-4 h-4" />,
       value: <CountUp value={stats.avgPerDay} format={format} />,
-      sub: `across ${stats.daysElapsed} day${stats.daysElapsed === 1 ? "" : "s"} this month`,
+      sub: t("stats.acrossDays", {
+        days: stats.daysElapsed,
+        unit: stats.daysElapsed === 1 ? t("stats.day") : t("stats.days"),
+      }),
       subClass: "",
     },
   ];

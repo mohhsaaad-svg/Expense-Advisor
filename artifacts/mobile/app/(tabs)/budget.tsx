@@ -19,6 +19,7 @@ import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useAuth } from '@/lib/auth';
+import { useLang, useT, type Lang } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -43,13 +44,10 @@ import { router } from 'expo-router';
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CAD', 'AUD'] as const;
 type CurrencyOption = (typeof CURRENCY_OPTIONS)[number];
 
-const FREQ_LABEL: Record<string, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  yearly: 'Yearly',
-};
+const LANGUAGE_OPTIONS: { value: Lang; label: string }[] = [
+  { value: 'en', label: 'English' },
+  { value: 'ar', label: 'العربية' },
+];
 
 export default function BudgetScreen() {
   const colors = useColors();
@@ -57,6 +55,19 @@ export default function BudgetScreen() {
   const { user, logout } = useAuth();
   const queryClient = useQueryClient();
   const { format } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
+  const FREQ_LABEL: Record<string, string> = {
+    daily: t('budget.freqDaily'),
+    weekly: t('budget.freqWeekly'),
+    monthly: t('budget.freqMonthly'),
+    quarterly: t('budget.freqQuarterly'),
+    yearly: t('budget.freqYearly'),
+  };
 
   const budget = useGetBudget();
   const updateBudget = useUpdateBudget();
@@ -77,6 +88,7 @@ export default function BudgetScreen() {
   const [saved, setSaved] = useState(false);
 
   const [currencyDraft, setCurrencyDraft] = useState<CurrencyOption | null>(null);
+  const [languageDraft, setLanguageDraft] = useState<Lang | null>(null);
   const [thresholdDraft, setThresholdDraft] = useState<number | null>(null);
   const [savedPrefs, setSavedPrefs] = useState(false);
 
@@ -127,10 +139,13 @@ export default function BudgetScreen() {
 
   const currencyValue: CurrencyOption =
     currencyDraft ?? ((prefs.data?.currency as CurrencyOption | undefined) ?? 'USD');
+  const languageValue: Lang =
+    languageDraft ?? ((prefs.data?.language as Lang | undefined) ?? 'en');
   const thresholdValue = thresholdDraft ?? prefs.data?.alertThreshold ?? 80;
   const prefsDirty =
     prefs.data !== undefined &&
     (currencyValue !== prefs.data.currency ||
+      languageValue !== (prefs.data.language ?? 'en') ||
       thresholdValue !== prefs.data.alertThreshold);
 
   const handleSave = () => {
@@ -170,17 +185,20 @@ export default function BudgetScreen() {
 
   const handleSavePrefs = () => {
     updatePreferences.mutate(
-      { data: { currency: currencyValue, alertThreshold: thresholdValue } },
+      {
+        data: {
+          currency: currencyValue,
+          language: languageValue,
+          alertThreshold: thresholdValue,
+        },
+      },
       {
         onSuccess: () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          queryClient.invalidateQueries({
-            queryKey: getGetPreferencesQueryKey(),
-          });
-          queryClient.invalidateQueries({
-            queryKey: getGetSpendingTipsQueryKey(),
-          });
+          // Invalidate everything so currency + language flip live across the UI.
+          queryClient.invalidateQueries();
           setCurrencyDraft(null);
+          setLanguageDraft(null);
           setThresholdDraft(null);
           setSavedPrefs(true);
           setTimeout(() => setSavedPrefs(false), 2000);
@@ -234,7 +252,7 @@ export default function BudgetScreen() {
 
   const displayName = user?.firstName
     ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
-    : 'My account';
+    : t('budget.myAccount');
 
   return (
     <ScrollView
@@ -243,8 +261,8 @@ export default function BudgetScreen() {
       keyboardShouldPersistTaps="handled"
       testID="screen-budget"
     >
-      <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-        Budget
+      <Text style={[styles.screenTitle, { color: colors.foreground }, rtlText]}>
+        {t('budget.title')}
       </Text>
 
       {budget.isLoading ? (
@@ -267,8 +285,8 @@ export default function BudgetScreen() {
       ) : budget.isError ? (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Couldn't load budget"
-          actionLabel="Retry"
+          title={t('budget.couldntLoad')}
+          actionLabel={t('common.retry')}
           onAction={() => budget.refetch()}
         />
       ) : (
@@ -283,20 +301,21 @@ export default function BudgetScreen() {
               },
             ]}
           >
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-              Spending limits
+            <Text style={[styles.cardTitle, { color: colors.foreground }, rtlText]}>
+              {t('budget.spendingLimits')}
             </Text>
-            <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-              Ember watches these and nudges you before things flare up.
+            <Text style={[styles.cardSub, { color: colors.mutedForeground }, rtlText]}>
+              {t('budget.spendingLimitsSub')}
             </Text>
 
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Daily limit
+              <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+                {t('budget.dailyLimit')}
               </Text>
               <View
                 style={[
                   styles.inputWrap,
+                  rowReverse,
                   {
                     borderColor: colors.input,
                     backgroundColor: colors.background,
@@ -317,18 +336,19 @@ export default function BudgetScreen() {
                   testID="input-daily-limit"
                 />
                 <Text style={[styles.per, { color: colors.mutedForeground }]}>
-                  / day
+                  {t('budget.perDay')}
                 </Text>
               </View>
             </View>
 
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Monthly limit
+              <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+                {t('budget.monthlyLimit')}
               </Text>
               <View
                 style={[
                   styles.inputWrap,
+                  rowReverse,
                   {
                     borderColor: colors.input,
                     backgroundColor: colors.background,
@@ -349,20 +369,19 @@ export default function BudgetScreen() {
                   testID="input-monthly-limit"
                 />
                 <Text style={[styles.per, { color: colors.mutedForeground }]}>
-                  / month
+                  {t('budget.perMonth')}
                 </Text>
               </View>
             </View>
 
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Salary — payday to payday
+              <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+                {t('budget.salaryLabel')}
               </Text>
-              <Text style={[styles.cardSub, { color: colors.mutedForeground, marginBottom: 0 }]}>
-                Set the day your salary lands and Ember budgets from payday to
-                payday instead of the calendar month.
+              <Text style={[styles.cardSub, { color: colors.mutedForeground, marginBottom: 0 }, rtlText]}>
+                {t('budget.salarySub')}
               </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={[{ flexDirection: 'row', gap: 8 }, rowReverse]}>
                 <View
                   style={[
                     styles.inputWrap,
@@ -382,7 +401,7 @@ export default function BudgetScreen() {
                     onChangeText={setSalaryAmountDraft}
                     keyboardType="decimal-pad"
                     style={[styles.input, { color: colors.foreground }]}
-                    placeholder="Salary"
+                    placeholder={t('budget.salaryAmountPlaceholder')}
                     placeholderTextColor={colors.mutedForeground}
                     testID="input-salary-amount"
                   />
@@ -403,7 +422,7 @@ export default function BudgetScreen() {
                     onChangeText={setSalaryDayDraft}
                     keyboardType="number-pad"
                     style={[styles.input, { color: colors.foreground }]}
-                    placeholder="Day (1–31)"
+                    placeholder={t('budget.salaryDayPlaceholder')}
                     placeholderTextColor={colors.mutedForeground}
                     testID="input-salary-day"
                   />
@@ -416,6 +435,7 @@ export default function BudgetScreen() {
               disabled={!isValid || !isDirty || updateBudget.isPending}
               style={({ pressed }) => [
                 styles.saveBtn,
+                rowReverse,
                 {
                   backgroundColor:
                     saved && !isDirty ? colors.success : colors.primary,
@@ -443,14 +463,14 @@ export default function BudgetScreen() {
                   <Text
                     style={[styles.saveText, { color: colors.primaryForeground }]}
                   >
-                    {saved && !isDirty ? 'Saved' : 'Save limits'}
+                    {saved && !isDirty ? t('common.saved') : t('budget.saveLimits')}
                   </Text>
                 </>
               )}
             </Pressable>
             {updateBudget.isError ? (
               <Text style={[styles.errorText, { color: colors.destructive }]}>
-                Couldn't save — please try again.
+                {t('common.saveErrorRetry')}
               </Text>
             ) : null}
           </View>
@@ -459,6 +479,7 @@ export default function BudgetScreen() {
             <View
               style={[
                 styles.hintCard,
+                rowReverse,
                 {
                   backgroundColor: colors.accent,
                   borderRadius: colorTokens.radius,
@@ -470,10 +491,12 @@ export default function BudgetScreen() {
                 size={18}
                 color={colors.accentForeground}
               />
-              <Text style={[styles.hintText, { color: colors.accentForeground }]}>
-                {format(budget.data.dailyLimit)} a day adds up to about{' '}
-                {format(budget.data.dailyLimit * 30)} a month — your
-                monthly cap is {format(budget.data.monthlyLimit)}.
+              <Text style={[styles.hintText, { color: colors.accentForeground }, rtlText]}>
+                {t('budget.dailyMonthlyHint', {
+                  daily: format(budget.data.dailyLimit),
+                  monthly: format(budget.data.dailyLimit * 30),
+                  cap: format(budget.data.monthlyLimit),
+                })}
               </Text>
             </View>
           ) : null}
@@ -491,9 +514,9 @@ export default function BudgetScreen() {
           },
         ]}
       >
-        <View style={styles.cardHeaderRow}>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-            Rituals
+        <View style={[styles.cardHeaderRow, rowReverse]}>
+          <Text style={[styles.cardTitle, { color: colors.foreground }, rtlText]}>
+            {t('budget.rituals')}
           </Text>
           <Pressable
             onPress={() => {
@@ -502,6 +525,7 @@ export default function BudgetScreen() {
             }}
             style={({ pressed }) => [
               styles.newBtn,
+              rowReverse,
               {
                 backgroundColor: colors.accent,
                 opacity: pressed ? 0.7 : 1,
@@ -511,14 +535,14 @@ export default function BudgetScreen() {
           >
             <Ionicons name="add" size={15} color={colors.accentForeground} />
             <Text style={[styles.newBtnText, { color: colors.accentForeground }]}>
-              New
+              {t('common.new')}
             </Text>
           </Pressable>
         </View>
-        <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
+        <Text style={[styles.cardSub, { color: colors.mutedForeground }, rtlText]}>
           {rules.data && rules.data.length > 0
-            ? `Auto-logged on schedule — about ${format(committed)} a month right now.`
-            : 'Repeating expenses Ember logs for you automatically.'}
+            ? t('budget.ritualsAutoSub', { amount: format(committed) })
+            : t('budget.ritualsSub')}
         </Text>
 
         {rules.isLoading ? (
@@ -535,9 +559,8 @@ export default function BudgetScreen() {
             ))}
           </View>
         ) : (rules.data ?? []).length === 0 ? (
-          <Text style={[styles.emptyRituals, { color: colors.mutedForeground }]}>
-            Nothing repeats yet. Add rent, subscriptions or your daily coffee —
-            set it once and forget it.
+          <Text style={[styles.emptyRituals, { color: colors.mutedForeground }, rtlText]}>
+            {t('budget.ritualsEmpty')}
           </Text>
         ) : (
           (rules.data ?? []).map((r, i) => (
@@ -545,6 +568,7 @@ export default function BudgetScreen() {
               key={r.id}
               style={[
                 styles.ritualRow,
+                rowReverse,
                 i > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
               ]}
               testID={`ritual-row-${r.id}`}
@@ -553,6 +577,7 @@ export default function BudgetScreen() {
                 onPress={() => router.push(`/recurring-form?id=${r.id}`)}
                 style={({ pressed }) => [
                   styles.ritualPressable,
+                  rowReverse,
                   { opacity: pressed ? 0.6 : r.active ? 1 : 0.55 },
                 ]}
                 testID={`ritual-edit-${r.id}`}
@@ -560,16 +585,16 @@ export default function BudgetScreen() {
                 <CategoryIcon category={r.category} size={34} />
                 <View style={{ flex: 1, gap: 1 }}>
                   <Text
-                    style={[styles.ritualName, { color: colors.foreground }]}
+                    style={[styles.ritualName, { color: colors.foreground }, rtlText]}
                     numberOfLines={1}
                   >
                     {r.description}
                   </Text>
                   <Text
-                    style={[styles.ritualMeta, { color: colors.mutedForeground }]}
+                    style={[styles.ritualMeta, { color: colors.mutedForeground }, rtlText]}
                   >
                     {FREQ_LABEL[r.frequency] ?? r.frequency} · {format(r.amount)}
-                    {r.active ? '' : ' · paused'}
+                    {r.active ? '' : ` · ${t('budget.paused')}`}
                   </Text>
                 </View>
               </Pressable>
@@ -597,15 +622,15 @@ export default function BudgetScreen() {
           },
         ]}
       >
-        <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-          Preferences
+        <Text style={[styles.cardTitle, { color: colors.foreground }, rtlText]}>
+          {t('budget.preferences')}
         </Text>
-        <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-          The currency Ember shows and how early it warns you.
+        <Text style={[styles.cardSub, { color: colors.mutedForeground }, rtlText]}>
+          {t('budget.preferencesSub')}
         </Text>
 
-        <Text style={[styles.label, { color: colors.mutedForeground }]}>
-          Currency
+        <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+          {t('budget.currency')}
         </Text>
         <ScrollView
           horizontal
@@ -623,6 +648,7 @@ export default function BudgetScreen() {
                 }}
                 style={[
                   styles.currencyChip,
+                  rowReverse,
                   {
                     backgroundColor: active ? colors.primary : colors.secondary,
                   },
@@ -658,10 +684,50 @@ export default function BudgetScreen() {
           })}
         </ScrollView>
 
-        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }]}>
-          Alert threshold
+        {/* Language */}
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+          {t('budget.language')}
         </Text>
-        <View style={styles.stepperRow}>
+        <View style={[styles.langRow, rowReverse]}>
+          {LANGUAGE_OPTIONS.map((opt) => {
+            const active = languageValue === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setLanguageDraft(opt.value);
+                }}
+                style={[
+                  styles.langChip,
+                  {
+                    backgroundColor: active ? colors.primary : colors.secondary,
+                    borderRadius: colorTokens.radius - 4,
+                  },
+                ]}
+                testID={`language-chip-${opt.value}`}
+              >
+                <Text
+                  style={[
+                    styles.langChipText,
+                    {
+                      color: active
+                        ? colors.primaryForeground
+                        : colors.secondaryForeground,
+                    },
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.label, { color: colors.mutedForeground, marginTop: 14 }, rtlText]}>
+          {t('budget.alertThreshold')}
+        </Text>
+        <View style={[styles.stepperRow, rowReverse]}>
           <Pressable
             onPress={() => {
               Haptics.selectionAsync();
@@ -681,10 +747,10 @@ export default function BudgetScreen() {
           </Pressable>
           <View style={styles.stepValueWrap}>
             <Text style={[styles.stepValue, { color: colors.foreground }]}>
-              {thresholdValue}%
+              {lang === 'ar' ? `${thresholdValue}٪` : `${thresholdValue}%`}
             </Text>
             <Text style={[styles.stepHint, { color: colors.mutedForeground }]}>
-              of a limit
+              {t('budget.ofALimit')}
             </Text>
           </View>
           <Pressable
@@ -705,9 +771,8 @@ export default function BudgetScreen() {
             <Ionicons name="add" size={18} color={colors.foreground} />
           </Pressable>
         </View>
-        <Text style={[styles.thresholdHint, { color: colors.mutedForeground }]}>
-          Ember raises a warning once you've burned this share of your daily or
-          monthly limit.
+        <Text style={[styles.thresholdHint, { color: colors.mutedForeground }, rtlText]}>
+          {t('budget.thresholdHint')}
         </Text>
 
         <Pressable
@@ -715,6 +780,7 @@ export default function BudgetScreen() {
           disabled={!prefsDirty || updatePreferences.isPending}
           style={({ pressed }) => [
             styles.saveBtn,
+            rowReverse,
             {
               backgroundColor:
                 savedPrefs && !prefsDirty ? colors.success : colors.primary,
@@ -740,14 +806,16 @@ export default function BudgetScreen() {
                 color={colors.primaryForeground}
               />
               <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-                {savedPrefs && !prefsDirty ? 'Saved' : 'Save preferences'}
+                {savedPrefs && !prefsDirty
+                  ? t('common.saved')
+                  : t('budget.savePreferences')}
               </Text>
             </>
           )}
         </Pressable>
         {updatePreferences.isError ? (
           <Text style={[styles.errorText, { color: colors.destructive }]}>
-            Couldn't save — please try again.
+            {t('common.saveErrorRetry')}
           </Text>
         ) : null}
       </View>
@@ -763,10 +831,10 @@ export default function BudgetScreen() {
           },
         ]}
       >
-        <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-          Account
+        <Text style={[styles.cardTitle, { color: colors.foreground }, rtlText]}>
+          {t('budget.account')}
         </Text>
-        <View style={styles.accountRow}>
+        <View style={[styles.accountRow, rowReverse]}>
           {user?.profileImageUrl ? (
             <Image
               source={{ uri: user.profileImageUrl }}
@@ -779,12 +847,12 @@ export default function BudgetScreen() {
             </View>
           )}
           <View style={{ flex: 1, gap: 1 }}>
-            <Text style={[styles.accountName, { color: colors.foreground }]}>
+            <Text style={[styles.accountName, { color: colors.foreground }, rtlText]}>
               {displayName}
             </Text>
             {user?.email ? (
               <Text
-                style={[styles.accountEmail, { color: colors.mutedForeground }]}
+                style={[styles.accountEmail, { color: colors.mutedForeground }, rtlText]}
                 numberOfLines={1}
               >
                 {user.email}
@@ -906,6 +974,20 @@ const styles = StyleSheet.create({
   currencyChips: {
     gap: 8,
     paddingVertical: 4,
+  },
+  langRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  langChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+  },
+  langChipText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_600SemiBold',
   },
   currencyChip: {
     flexDirection: 'row',

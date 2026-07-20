@@ -40,6 +40,9 @@ import {
   getGetSpendingTipsQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useT, categoryLabel } from "@/lib/i18n";
+import { currencySymbol } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 
 const CATEGORIES = [
   "Food & Drink",
@@ -65,6 +68,8 @@ const formSchema = z.object({
 export function EditExpenseDialog({ expenseId, children }: { expenseId: number; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const t = useT();
+  const { currency } = useCurrency();
   const queryClient = useQueryClient();
   
   const { data: expense } = useGetExpense(expenseId, {
@@ -110,15 +115,15 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
           queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
-            title: "Record updated",
-            description: "Your expense has been successfully updated.",
+            title: t("toast.recordUpdated.title"),
+            description: t("toast.recordUpdated.desc"),
           });
           setOpen(false);
         },
         onError: () => {
           toast({
-            title: "Error",
-            description: "Failed to update expense. Please try again.",
+            title: t("toast.error.title"),
+            description: t("toast.updateFailed.desc"),
             variant: "destructive",
           });
         },
@@ -139,7 +144,7 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
         <div className="h-2 bg-gradient-to-r from-muted-foreground/30 to-muted-foreground/10 w-full" />
         <div className="p-6">
           <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-serif font-bold text-foreground">Edit Expense</DialogTitle>
+            <DialogTitle className="text-2xl font-serif font-bold text-foreground">{t("expense.edit")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -149,11 +154,11 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Amount</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t("common.amount")}</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">$</span>
-                          <Input type="number" step="0.01" className="pl-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
+                          <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">{currencySymbol(currency)}</span>
+                          <Input type="number" step="0.01" className="ps-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -165,7 +170,7 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
                   name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Date</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t("common.date")}</FormLabel>
                       <FormControl>
                         <Input type="date" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" {...field} />
                       </FormControl>
@@ -179,17 +184,17 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Category</FormLabel>
+                    <FormLabel className="text-sm font-medium">{t("common.category")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12">
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue placeholder={t("common.selectCategory")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl">
                         {CATEGORIES.map((cat) => (
                           <SelectItem key={cat} value={cat} className="rounded-md cursor-pointer">
-                            {cat}
+                            {categoryLabel(t, cat)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -203,9 +208,9 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Description</FormLabel>
+                    <FormLabel className="text-sm font-medium">{t("common.description")}</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What was this for?" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 min-h-[100px] resize-none" {...field} />
+                      <Textarea placeholder={t("common.descriptionPlaceholder")} className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 min-h-[100px] resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,7 +222,7 @@ export function EditExpenseDialog({ expenseId, children }: { expenseId: number; 
                   className="w-full h-12 rounded-xl text-base font-medium"
                   disabled={updateExpense.isPending}
                 >
-                  {updateExpense.isPending ? "Saving..." : "Save Changes"}
+                  {updateExpense.isPending ? t("common.saving") : t("common.saveChanges")}
                 </Button>
               </div>
             </form>

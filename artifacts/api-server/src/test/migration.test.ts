@@ -191,3 +191,36 @@ describe("0002_salary_cycle migration", () => {
     });
   });
 });
+
+const LANGUAGE_MIGRATION = fs.readFileSync(
+  fileURLToPath(new URL("../../../../lib/db/migrations/0003_preferences_language.sql", import.meta.url)),
+  "utf8",
+);
+
+describe("0003_preferences_language migration", () => {
+  it("backfills legacy rows to 'en', enforces supported languages, and is re-runnable", async () => {
+    await withScratchSchema(async (client) => {
+      await client.query(`INSERT INTO users (id) VALUES ('only-user')`);
+      // A legacy preferences row that predates the language column entirely.
+      await client.query(`INSERT INTO preferences DEFAULT VALUES`);
+      await client.query(MIGRATION); // 0001 first, mirroring the rollout order
+
+      await client.query(LANGUAGE_MIGRATION);
+      await client.query(LANGUAGE_MIGRATION); // idempotent
+
+      // Legacy row resolved to English without any explicit backfill step.
+      const row = await client.query(
+        `SELECT count(*)::int AS n FROM preferences WHERE language = 'en'`,
+      );
+      expect(row.rows[0].n).toBe(1);
+
+      // Updates to a supported language work; unsupported values are rejected.
+      await client.query(`UPDATE preferences SET language = 'ar'`);
+      const ar = await client.query(`SELECT count(*)::int AS n FROM preferences WHERE language = 'ar'`);
+      expect(ar.rows[0].n).toBe(1);
+      await expect(
+        client.query(`UPDATE preferences SET language = 'fr'`),
+      ).rejects.toThrow(/preferences_language_supported/);
+    });
+  });
+});

@@ -40,6 +40,7 @@ router.get("/preferences", async (req, res): Promise<void> => {
   res.json({
     id: prefs.id,
     currency: prefs.currency,
+    language: prefs.language,
     alertThreshold: prefs.alertThreshold,
     updatedAt: prefs.updatedAt.toISOString(),
   });
@@ -60,6 +61,8 @@ router.put("/preferences", async (req, res): Promise<void> => {
     .update(preferencesTable)
     .set({
       currency: body.data.currency,
+      // Optional in the input so pre-language clients keep working
+      language: body.data.language ?? existing.language,
       alertThreshold: body.data.alertThreshold,
       updatedAt: new Date(),
     })
@@ -74,6 +77,7 @@ router.put("/preferences", async (req, res): Promise<void> => {
   res.json({
     id: updated.id,
     currency: updated.currency,
+    language: updated.language,
     alertThreshold: updated.alertThreshold,
     updatedAt: updated.updatedAt.toISOString(),
   });

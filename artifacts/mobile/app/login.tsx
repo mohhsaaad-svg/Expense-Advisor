@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/lib/auth';
+import { useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect } from 'expo-router';
@@ -18,6 +19,8 @@ export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isLoading, isAuthenticated, login } = useAuth();
+  const t = useT();
+  const { isRTL } = useLang();
   const [busy, setBusy] = React.useState(false);
 
   if (isAuthenticated) {
@@ -44,7 +47,9 @@ export default function LoginScreen() {
           { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 48 },
         ]}
       >
-        <View style={styles.brand}>
+        <View
+          style={[styles.brand, isRTL && { flexDirection: 'row-reverse' }]}
+        >
           <View style={[styles.flameWrap, { backgroundColor: colors.primary }]}>
             <Ionicons name="flame" size={34} color={colors.primaryForeground} />
           </View>
@@ -54,12 +59,23 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.hero}>
-          <Text style={[styles.headline, { color: colors.foreground }]}>
-            Keep your spending{'\n'}from catching fire.
+          <Text
+            style={[
+              styles.headline,
+              { color: colors.foreground },
+              isRTL && { writingDirection: 'rtl', textAlign: 'right' },
+            ]}
+          >
+            {t('login.headline')}
           </Text>
-          <Text style={[styles.sub, { color: colors.mutedForeground }]}>
-            Small daily expenses are like embers — harmless while you keep an
-            eye on them, costly when you don't.
+          <Text
+            style={[
+              styles.sub,
+              { color: colors.mutedForeground },
+              isRTL && { writingDirection: 'rtl', textAlign: 'right' },
+            ]}
+          >
+            {t('login.sub')}
           </Text>
         </View>
 
@@ -71,6 +87,7 @@ export default function LoginScreen() {
             disabled={busy}
             style={({ pressed }) => [
               styles.cta,
+              isRTL && { flexDirection: 'row-reverse' },
               {
                 backgroundColor: colors.primary,
                 borderRadius: 999,
@@ -86,10 +103,10 @@ export default function LoginScreen() {
                 <Text
                   style={[styles.ctaText, { color: colors.primaryForeground }]}
                 >
-                  Sign in to continue
+                  {t('login.signIn')}
                 </Text>
                 <Ionicons
-                  name="arrow-forward"
+                  name={isRTL ? 'arrow-back' : 'arrow-forward'}
                   size={18}
                   color={colors.primaryForeground}
                 />

@@ -27,8 +27,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CountUp } from "@/components/CountUp";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
-import { currencySymbol, formatDate, localDateKey } from "@/lib/utils";
-import { nextOccurrence, monthlyEquivalent, FREQUENCY_LABELS } from "@/lib/recurrence-ui";
+import { currencySymbol, localDateKey } from "@/lib/utils";
+import { nextOccurrence, monthlyEquivalent } from "@/lib/recurrence-ui";
+import { useT, categoryLabel, type TranslationKey } from "@/lib/i18n";
 import {
   Repeat, Plus, Pencil, Trash2, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Send, Users, CreditCard,
 } from "lucide-react";
@@ -61,12 +62,20 @@ const CATEGORIES = [
   "Other",
 ];
 
-const FREQUENCY_SUFFIX: Record<string, string> = {
-  daily: "/ day",
-  weekly: "/ week",
-  monthly: "/ month",
-  quarterly: "/ quarter",
-  yearly: "/ year",
+const FREQUENCY_LABEL_KEYS: Record<string, TranslationKey> = {
+  daily: "frequency.daily",
+  weekly: "frequency.weekly",
+  monthly: "frequency.monthly",
+  quarterly: "frequency.quarterly",
+  yearly: "frequency.yearly",
+};
+
+const FREQUENCY_SUFFIX_KEYS: Record<string, TranslationKey> = {
+  daily: "frequency.suffix.daily",
+  weekly: "frequency.suffix.weekly",
+  monthly: "frequency.suffix.monthly",
+  quarterly: "frequency.suffix.quarterly",
+  yearly: "frequency.suffix.yearly",
 };
 
 type RecurringRule = {
@@ -98,7 +107,8 @@ export default function Recurring() {
   const deleteRule = useDeleteRecurringExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { format, currency } = useCurrency();
+  const { format, currency, formatDate } = useCurrency();
+  const t = useT();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringRule | null>(null);
@@ -153,17 +163,17 @@ export default function Recurring() {
       onSuccess: () => {
         invalidateSpendingData();
         toast({
-          title: editing ? "Ritual updated" : "Ritual lit",
+          title: editing ? t("toast.ritualUpdated.title") : t("toast.ritualLit.title"),
           description: backfilling && !editing
-            ? "Ember logged every occurrence since the start date, and will keep going automatically."
-            : "Ember will log this expense automatically from now on.",
+            ? t("toast.ritualBackfill.desc")
+            : t("toast.ritualGoing.desc"),
         });
         setOpen(false);
       },
       onError: () => {
         toast({
-          title: "Error",
-          description: "Could not save the recurring expense. Please try again.",
+          title: t("toast.error.title"),
+          description: t("toast.ritualSaveError.desc"),
           variant: "destructive" as const,
         });
       },
@@ -182,10 +192,10 @@ export default function Recurring() {
         onSuccess: () => {
           invalidateSpendingData();
           toast({
-            title: active ? "Ritual resumed" : "Ritual paused",
+            title: active ? t("toast.ritualResumed.title") : t("toast.ritualPaused.title"),
             description: active
-              ? "Logging picks up from today — no catch-up entries for the paused stretch."
-              : "Ember will stop logging this one until you resume it.",
+              ? t("toast.ritualResumed.desc")
+              : t("toast.ritualPaused.desc"),
           });
         },
       },
@@ -193,13 +203,13 @@ export default function Recurring() {
   };
 
   const handleDelete = (rule: RecurringRule) => {
-    if (confirm("Delete this recurring expense? Entries already in your logbook will stay.")) {
+    if (confirm(t("recurring.confirmDelete"))) {
       deleteRule.mutate(
         { id: rule.id },
         {
           onSuccess: () => {
             invalidateSpendingData();
-            toast({ title: "Ritual removed", description: "Its logged entries remain in your logbook." });
+            toast({ title: t("toast.ritualRemoved.title"), description: t("toast.ritualRemoved.desc") });
           },
         },
       );
@@ -217,15 +227,15 @@ export default function Recurring() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Rituals</h1>
-          <p className="text-lg text-muted-foreground font-light">Repeating expenses, logged for you automatically.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">{t('recurring.title')}</h1>
+          <p className="text-lg text-muted-foreground font-light">{t('recurring.subtitle')}</p>
         </div>
         <Button
           onClick={() => { setEditing(null); setOpen(true); }}
           className="h-12 gap-2 px-6 rounded-full shadow-lg shadow-primary/20 hover-elevate transition-all font-medium text-base"
           data-testid="button-add-recurring"
         >
-          <Plus className="w-5 h-5" /> Add Recurring
+          <Plus className="w-5 h-5" /> {t('recurring.add')}
         </Button>
       </div>
 
@@ -242,9 +252,9 @@ export default function Recurring() {
               <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6 shadow-inner">
                 <Repeat className="w-10 h-10 text-muted-foreground/50" />
               </div>
-              <h3 className="text-2xl font-serif font-semibold text-foreground mb-2">No rituals yet</h3>
+              <h3 className="text-2xl font-serif font-semibold text-foreground mb-2">{t('recurring.noRituals')}</h3>
               <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-                Rent, subscriptions, the gym, your daily coffee — add them once and Ember logs them on schedule, automatically.
+                {t('recurring.emptyDesc')}
               </p>
               <Button
                 variant="outline"
@@ -252,7 +262,7 @@ export default function Recurring() {
                 onClick={() => { setEditing(null); setOpen(true); }}
                 data-testid="button-add-recurring-empty"
               >
-                <Plus className="w-4 h-4 mr-2" /> Add your first
+                <Plus className="w-4 h-4 me-2" /> {t('recurring.addFirst')}
               </Button>
             </div>
           ) : (
@@ -272,27 +282,27 @@ export default function Recurring() {
                     </p>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary" className="font-medium bg-background border-border text-xs px-2.5 py-0.5 rounded-md">
-                        {rule.category}
+                        {categoryLabel(t, rule.category)}
                       </Badge>
                       <Badge variant="secondary" className="font-medium bg-primary/10 text-primary border-transparent text-xs px-2.5 py-0.5 rounded-md">
-                        <Repeat className="w-3 h-3 mr-1" />
-                        {FREQUENCY_LABELS[rule.frequency] ?? rule.frequency}
+                        <Repeat className="w-3 h-3 me-1" />
+                        {FREQUENCY_LABEL_KEYS[rule.frequency] ? t(FREQUENCY_LABEL_KEYS[rule.frequency]) : rule.frequency}
                       </Badge>
                       <span className="text-xs text-muted-foreground font-medium">
                         {rule.active
-                          ? `Next: ${formatDate(nextOccurrence(rule.frequency, rule.startDate, todayKey))}`
-                          : "Paused"}
+                          ? t('recurring.next', { date: formatDate(nextOccurrence(rule.frequency, rule.startDate, todayKey)) })
+                          : t('recurring.paused')}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center justify-between sm:justify-end gap-5 sm:w-auto w-full border-t sm:border-0 border-border/50 pt-3 sm:pt-0">
-                  <div className="text-right">
+                  <div className="text-end">
                     <div className="font-serif text-2xl font-bold tracking-tight text-foreground">
                       {format(rule.amount)}
                     </div>
                     <div className="text-xs text-muted-foreground font-medium">
-                      {FREQUENCY_SUFFIX[rule.frequency] ?? ""}
+                      {FREQUENCY_SUFFIX_KEYS[rule.frequency] ? t(FREQUENCY_SUFFIX_KEYS[rule.frequency]) : ""}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -331,17 +341,17 @@ export default function Recurring() {
         <div className="lg:col-span-4 space-y-6">
           <Card className="bg-primary/5 border-primary/10 shadow-none rounded-3xl">
             <CardContent className="p-8">
-              <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-5">Committed each month</h3>
+              <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-5">{t('recurring.committedMonthly')}</h3>
               <div className="flex items-baseline gap-2 mb-6">
                 <CountUp
                   value={committedMonthly}
                   format={format}
                   className="text-4xl font-serif font-bold tracking-tight text-foreground"
                 />
-                <span className="text-muted-foreground font-light">approx.</span>
+                <span className="text-muted-foreground font-light">{t('common.approx')}</span>
               </div>
               <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
-                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Active rituals</span>
+                <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('recurring.activeRituals')}</span>
                 <CountUp value={activeRules.length} className="text-foreground font-serif text-2xl font-bold" />
               </div>
             </CardContent>
@@ -352,12 +362,12 @@ export default function Recurring() {
               <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center shadow-sm">
                 <Repeat className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-serif font-bold text-2xl text-foreground">How rituals work</h3>
+              <h3 className="font-serif font-bold text-2xl text-foreground">{t('recurring.howItWorks')}</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Each ritual is logged into your logbook automatically on its schedule — daily, weekly on the start date's weekday, monthly, quarterly (great for rent paid four times a year) or yearly on its day of the month.
+                {t('recurring.how1')}
               </p>
               <p className="text-base text-muted-foreground leading-relaxed">
-                Pause one and Ember stops logging it; resume and it picks up from today. Deleting a ritual never touches what's already in the logbook.
+                {t('recurring.how2')}
               </p>
             </CardContent>
           </Card>
@@ -370,7 +380,7 @@ export default function Recurring() {
           <div className="p-6">
             <DialogHeader className="mb-6">
               <DialogTitle className="text-2xl font-serif font-bold text-foreground">
-                {editing ? "Edit Ritual" : "New Ritual"}
+                {editing ? t('recurring.editRitual') : t('recurring.newRitual')}
               </DialogTitle>
             </DialogHeader>
             <Form {...form}>
@@ -380,9 +390,9 @@ export default function Recurring() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Name</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t('recurring.name')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Netflix, rent, gym…" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" {...field} />
+                        <Input placeholder={t('recurring.namePlaceholder')} className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -394,11 +404,11 @@ export default function Recurring() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Amount</FormLabel>
+                        <FormLabel className="text-sm font-medium">{t('common.amount')}</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">{currencySymbol(currency)}</span>
-                            <Input type="number" step="0.01" className="pl-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
+                            <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">{currencySymbol(currency)}</span>
+                            <Input type="number" step="0.01" className="ps-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
                           </div>
                         </FormControl>
                         <FormMessage />
@@ -410,7 +420,7 @@ export default function Recurring() {
                     name="frequency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">Repeats</FormLabel>
+                        <FormLabel className="text-sm font-medium">{t('recurring.repeats')}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" data-testid="select-frequency">
@@ -418,11 +428,11 @@ export default function Recurring() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="rounded-xl">
-                            <SelectItem value="daily" className="rounded-md cursor-pointer">Daily</SelectItem>
-                            <SelectItem value="weekly" className="rounded-md cursor-pointer">Weekly</SelectItem>
-                            <SelectItem value="monthly" className="rounded-md cursor-pointer">Monthly</SelectItem>
-                            <SelectItem value="quarterly" className="rounded-md cursor-pointer">Quarterly</SelectItem>
-                            <SelectItem value="yearly" className="rounded-md cursor-pointer">Yearly</SelectItem>
+                            <SelectItem value="daily" className="rounded-md cursor-pointer">{t('frequency.daily')}</SelectItem>
+                            <SelectItem value="weekly" className="rounded-md cursor-pointer">{t('frequency.weekly')}</SelectItem>
+                            <SelectItem value="monthly" className="rounded-md cursor-pointer">{t('frequency.monthly')}</SelectItem>
+                            <SelectItem value="quarterly" className="rounded-md cursor-pointer">{t('frequency.quarterly')}</SelectItem>
+                            <SelectItem value="yearly" className="rounded-md cursor-pointer">{t('frequency.yearly')}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -435,17 +445,17 @@ export default function Recurring() {
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Category</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t('common.category')}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12">
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder={t('common.selectCategory')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-xl">
                           {CATEGORIES.map((cat) => (
                             <SelectItem key={cat} value={cat} className="rounded-md cursor-pointer">
-                              {cat}
+                              {categoryLabel(t, cat)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -459,12 +469,12 @@ export default function Recurring() {
                   name="startDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Starts on</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t('recurring.startsOn')}</FormLabel>
                       <FormControl>
                         <Input type="date" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" {...field} />
                       </FormControl>
                       <FormDescription className="text-xs">
-                        Pick a past date and Ember will backfill every occurrence since then.
+                        {t('recurring.startsOnDesc')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -478,8 +488,8 @@ export default function Recurring() {
                     data-testid="button-save-recurring"
                   >
                     {createRule.isPending || updateRule.isPending
-                      ? "Saving..."
-                      : editing ? "Save Changes" : "Light It"}
+                      ? t('common.saving')
+                      : editing ? t('common.saveChanges') : t('recurring.lightIt')}
                   </Button>
                 </div>
               </form>

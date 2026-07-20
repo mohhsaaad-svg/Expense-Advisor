@@ -22,6 +22,7 @@ import {
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategoryName, useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -54,6 +55,12 @@ export default function ExpenseFormScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { currency } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
   const params = useLocalSearchParams<{ id?: string }>();
   const expenseId = params.id ? parseInt(params.id, 10) : undefined;
   const isEdit = expenseId !== undefined && !Number.isNaN(expenseId);
@@ -129,10 +136,10 @@ export default function ExpenseFormScreen() {
 
   const handleDelete = () => {
     if (!isEdit || expenseId === undefined) return;
-    Alert.alert('Delete expense', 'This ember goes out for good. Delete it?', [
-      { text: 'Keep it', style: 'cancel' },
+    Alert.alert(t('expenseForm.deleteTitle'), t('expenseForm.deleteBody'), [
+      { text: t('common.keepIt'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           deleteExpense.mutate(
@@ -163,7 +170,13 @@ export default function ExpenseFormScreen() {
       testID="screen-expense-form"
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad }]}>
+      <View
+        style={[
+          styles.header,
+          isRTL && { flexDirection: 'row-reverse' },
+          { paddingTop: topPad },
+        ]}
+      >
         <Pressable
           onPress={() => router.back()}
           style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 6 })}
@@ -172,7 +185,7 @@ export default function ExpenseFormScreen() {
           <Ionicons name="close" size={26} color={colors.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          {isEdit ? 'Edit expense' : 'New expense'}
+          {isEdit ? t('expenseForm.edit') : t('expenseForm.new')}
         </Text>
         {isEdit ? (
           <Pressable
@@ -215,7 +228,7 @@ export default function ExpenseFormScreen() {
               value={amount}
               onChangeText={setAmountDraft}
               keyboardType="decimal-pad"
-              placeholder="0.00"
+              placeholder={t('form.amountPlaceholder')}
               placeholderTextColor={colors.mutedForeground}
               autoFocus={!isEdit}
               style={[styles.amountInput, { color: colors.foreground }]}
@@ -224,8 +237,8 @@ export default function ExpenseFormScreen() {
           </View>
 
           {/* Category grid */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Category
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('expenseForm.category')}
           </Text>
           <View style={styles.catGrid}>
             {CATEGORIES.map((c) => {
@@ -239,6 +252,7 @@ export default function ExpenseFormScreen() {
                   }}
                   style={[
                     styles.catChip,
+                    isRTL && { flexDirection: 'row-reverse' },
                     {
                       backgroundColor: active ? colors.accent : colors.card,
                       borderColor: active ? c.color : colors.border,
@@ -263,7 +277,7 @@ export default function ExpenseFormScreen() {
                     ]}
                     numberOfLines={1}
                   >
-                    {c.name}
+                    {categoryName(c.name)}
                   </Text>
                 </Pressable>
               );
@@ -271,13 +285,13 @@ export default function ExpenseFormScreen() {
           </View>
 
           {/* Description */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Description
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('expenseForm.description')}
           </Text>
           <TextInput
             value={description}
             onChangeText={setDescDraft}
-            placeholder="Flat white, bus ticket, groceries…"
+            placeholder={t('expenseForm.descriptionPlaceholder')}
             placeholderTextColor={colors.mutedForeground}
             style={[
               styles.descInput,
@@ -287,13 +301,14 @@ export default function ExpenseFormScreen() {
                 borderColor: colors.border,
                 borderRadius: colorTokens.radius - 2,
               },
+              rtlText,
             ]}
             testID="input-description"
           />
 
           {/* Date */}
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            Date
+          <Text style={[styles.label, { color: colors.mutedForeground }, rtlText]}>
+            {t('expenseForm.date')}
           </Text>
           <ScrollView
             horizontal
@@ -324,7 +339,7 @@ export default function ExpenseFormScreen() {
                       },
                     ]}
                   >
-                    {dateLabel(d)}
+                    {dateLabel(d, lang)}
                   </Text>
                 </Pressable>
               );
@@ -333,7 +348,7 @@ export default function ExpenseFormScreen() {
 
           {saveError ? (
             <Text style={[styles.errorText, { color: colors.destructive }]}>
-              Couldn't save — check the fields and try again.
+              {t('expenseForm.saveErrorFields')}
             </Text>
           ) : null}
         </KeyboardAwareScrollViewCompat>
@@ -346,6 +361,7 @@ export default function ExpenseFormScreen() {
           disabled={!isValid || pending}
           style={({ pressed }) => [
             styles.saveBtn,
+            isRTL && { flexDirection: 'row-reverse' },
             {
               backgroundColor: colors.primary,
               opacity: !isValid || pending ? 0.45 : pressed ? 0.85 : 1,
@@ -363,7 +379,7 @@ export default function ExpenseFormScreen() {
                 color={colors.primaryForeground}
               />
               <Text style={[styles.saveText, { color: colors.primaryForeground }]}>
-                {isEdit ? 'Save changes' : 'Log expense'}
+                {isEdit ? t('common.saveChanges') : t('expenseForm.logExpense')}
               </Text>
             </>
           )}

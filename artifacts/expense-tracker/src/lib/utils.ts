@@ -5,8 +5,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency: string = "USD") {
-  return new Intl.NumberFormat("en-US", {
+/**
+ * Locale used for number/date formatting. We always keep Western (Latin)
+ * digits — even in Arabic — via the `-u-nu-latn` numbering-system subtag.
+ */
+function intlLocale(lang: string): string {
+  return lang === "ar" ? "ar-u-nu-latn" : "en-US";
+}
+
+export function formatCurrency(
+  amount: number,
+  currency: string = "USD",
+  lang: string = "en",
+) {
+  return new Intl.NumberFormat(intlLocale(lang), {
     style: "currency",
     currency,
   }).format(amount);
@@ -34,23 +46,20 @@ export function localDateKey(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
-export function formatDate(dateString: string) {
+export function formatDate(dateString: string, lang: string = "en") {
   if (!dateString) return "";
   const date = new Date(dateString);
   // adjust for timezone issues if needed, but since it's YYYY-MM-DD
   // we can parse it carefully.
+  const opts: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  };
   const [year, month, day] = dateString.split('-');
   if (year && month && day) {
     const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric"
-    }).format(d);
+    return new Intl.DateTimeFormat(intlLocale(lang), opts).format(d);
   }
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric"
-  }).format(date);
+  return new Intl.DateTimeFormat(intlLocale(lang), opts).format(date);
 }

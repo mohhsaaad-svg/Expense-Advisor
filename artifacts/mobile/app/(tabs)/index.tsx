@@ -16,11 +16,12 @@ import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { ProgressBar } from '@/components/ember/ProgressBar';
 import { Skeleton } from '@/components/ember/Skeleton';
 import { TipCard } from '@/components/ember/TipCard';
-import { dateLabel, toDateKey } from '@/constants/categories';
+import { dateLabel, formatPercent, toDateKey } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useAuth } from '@/lib/auth';
+import { useCategoryName, useLang, useT, type TFunc } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getGetDailySummaryQueryKey,
@@ -36,11 +37,11 @@ import { router } from 'expo-router';
 
 const PAYDAY_PROMPT_KEY = 'ember-payday-prompt-dismissed';
 
-function greeting(): string {
+function greeting(t: TFunc): string {
   const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (h < 12) return t('today.morning');
+  if (h < 18) return t('today.afternoon');
+  return t('today.evening');
 }
 
 export default function TodayScreen() {
@@ -48,6 +49,13 @@ export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { format } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const categoryName = useCategoryName();
+  const rtlText = isRTL
+    ? ({ writingDirection: 'rtl', textAlign: 'right' } as const)
+    : undefined;
+  const rowReverse = isRTL ? ({ flexDirection: 'row-reverse' } as const) : undefined;
 
   // Pass the device-local date explicitly — the server would otherwise
   // derive "today" in its own timezone, which drifts around midnight.
@@ -128,14 +136,18 @@ export default function TodayScreen() {
       testID="screen-today"
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, rowReverse]}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-            {greeting()}
-            {user?.firstName ? `, ${user.firstName}` : ''}
+          <Text
+            style={[styles.greeting, { color: colors.mutedForeground }, rtlText]}
+          >
+            {greeting(t)}
+            {user?.firstName ? `${isRTL ? '،' : ','} ${user.firstName}` : ''}
           </Text>
-          <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-            Today's burn
+          <Text
+            style={[styles.screenTitle, { color: colors.foreground }, rtlText]}
+          >
+            {t('today.title')}
           </Text>
         </View>
         {user?.profileImageUrl ? (
@@ -172,33 +184,42 @@ export default function TodayScreen() {
         ) : daily.isError ? (
           <EmptyState
             icon="cloud-offline-outline"
-            title="Couldn't load today"
-            actionLabel="Retry"
+            title={t('today.couldntLoad')}
+            actionLabel={t('common.retry')}
             onAction={() => daily.refetch()}
           />
         ) : summary ? (
           <>
             {month && month.underBudgetStreak > 0 ? (
               <View
-                style={[styles.streakPill, { backgroundColor: colors.accent }]}
+                style={[
+                  styles.streakPill,
+                  isRTL ? { left: 16, right: undefined } : null,
+                  rowReverse,
+                  { backgroundColor: colors.accent },
+                ]}
                 testID="streak-pill"
               >
                 <Ionicons name="flame" size={12} color={colors.primary} />
                 <Text style={[styles.streakText, { color: colors.accentForeground }]}>
-                  {month.underBudgetStreak}-day streak
+                  {t('today.streak', { n: month.underBudgetStreak })}
                 </Text>
               </View>
             ) : null}
             <AnimatedNumber
               value={summary.totalSpent}
               format={format}
-              style={[styles.heroAmount, { color: colors.foreground }]}
+              style={[styles.heroAmount, { color: colors.foreground }, rtlText]}
               testID="hero-amount"
             />
-            <Text style={[styles.heroSub, { color: colors.mutedForeground }]}>
-              of {format(summary.dailyLimit)} daily budget ·{' '}
+            <Text
+              style={[styles.heroSub, { color: colors.mutedForeground }, rtlText]}
+            >
+              {t('today.ofDailyBudget', { amount: format(summary.dailyLimit) })} ·{' '}
               {summary.expenseCount}{' '}
-              {summary.expenseCount === 1 ? 'expense' : 'expenses'}
+              {summary.expenseCount === 1
+                ? t('today.expenseOne')
+                : t('today.expenseOther')}
             </Text>
             <View style={{ marginTop: 16 }}>
               <ProgressBar percent={summary.percentUsed} />
@@ -212,11 +233,14 @@ export default function TodayScreen() {
                       ? colors.destructive
                       : colors.success,
                 },
+                rtlText,
               ]}
             >
               {summary.totalSpent > summary.dailyLimit
-                ? `${format(summary.totalSpent - summary.dailyLimit)} over budget`
-                : `${format(summary.remaining)} still glowing`}
+                ? t('today.overBudget', {
+                    amount: format(summary.totalSpent - summary.dailyLimit),
+                  })
+                : t('today.stillGlowing', { amount: format(summary.remaining) })}
             </Text>
           </>
         ) : null}
@@ -234,10 +258,10 @@ export default function TodayScreen() {
           ]}
           testID="payday-prompt"
         >
-          <View style={styles.paydayPromptHeader}>
+          <View style={[styles.paydayPromptHeader, rowReverse]}>
             <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-            <Text style={[styles.paydayPromptTitle, { color: colors.accentForeground }]}>
-              Budget payday to payday
+            <Text style={[styles.paydayPromptTitle, { color: colors.accentForeground }, rtlText]}>
+              {t('today.paydayPromptTitle')}
             </Text>
             <Pressable
               onPress={dismissPaydayPrompt}
@@ -247,9 +271,8 @@ export default function TodayScreen() {
               <Ionicons name="close" size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
-          <Text style={[styles.paydayPromptText, { color: colors.accentForeground }]}>
-            Set the day your salary lands and Ember budgets follow your real
-            salary cycle instead of the calendar month.
+          <Text style={[styles.paydayPromptText, { color: colors.accentForeground }, rtlText]}>
+            {t('today.paydayPromptText')}
           </Text>
           <Pressable
             onPress={() => router.push('/budget')}
@@ -260,7 +283,7 @@ export default function TodayScreen() {
             testID="payday-prompt-link"
           >
             <Text style={[styles.paydayPromptBtnText, { color: colors.primaryForeground }]}>
-              Set my payday
+              {t('today.paydayPromptCta')}
             </Text>
           </Pressable>
         </View>
@@ -269,18 +292,22 @@ export default function TodayScreen() {
       {/* Cycle counters */}
       {month ? (
         <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              {month.cycleAnchored ? 'This salary cycle' : 'This month'}
+          <View style={[styles.sectionHeaderRow, rowReverse]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+              {month.cycleAnchored
+                ? t('today.thisSalaryCycle')
+                : t('today.thisMonth')}
             </Text>
             {month.cycleAnchored && month.daysUntilPayday !== null ? (
               <View
-                style={[styles.paydayPill, { backgroundColor: colors.accent }]}
+                style={[styles.paydayPill, rowReverse, { backgroundColor: colors.accent }]}
                 testID="payday-pill"
               >
                 <Ionicons name="cash-outline" size={12} color={colors.primary} />
                 <Text style={[styles.paydayText, { color: colors.accentForeground }]}>
-                  {month.daysUntilPayday} day{month.daysUntilPayday === 1 ? '' : 's'} to payday
+                  {month.daysUntilPayday === 1
+                    ? t('today.daysToPaydayOne', { n: month.daysUntilPayday })
+                    : t('today.daysToPaydayOther', { n: month.daysUntilPayday })}
                 </Text>
               </View>
             ) : null}
@@ -295,15 +322,15 @@ export default function TodayScreen() {
               },
             ]}
           >
-            <View style={styles.statGrid}>
+            <View style={[styles.statGrid, rowReverse]}>
               <View style={styles.statCell}>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-                  Spent so far
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.spentSoFar')}
                 </Text>
                 <AnimatedNumber
                   value={month.monthToDate}
                   format={format}
-                  style={[styles.statValue, { color: colors.foreground }]}
+                  style={[styles.statValue, { color: colors.foreground }, rtlText]}
                   testID="stat-month-to-date"
                 />
                 <Text
@@ -315,16 +342,24 @@ export default function TodayScreen() {
                           ? colors.destructive
                           : colors.mutedForeground,
                     },
+                    rtlText,
                   ]}
                 >
-                  {month.monthPercentUsed}% of {format(month.monthlyLimit)}
+                  {t('today.percentOf', {
+                    pct: month.monthPercentUsed,
+                    amount: format(month.monthlyLimit),
+                  })}
                 </Text>
               </View>
               <View
-                style={[styles.statCell, styles.statCellRight, { borderLeftColor: colors.border }]}
+                style={[
+                  styles.statCell,
+                  isRTL ? styles.statCellRightRTL : styles.statCellRight,
+                  { borderLeftColor: colors.border, borderRightColor: colors.border },
+                ]}
               >
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-                  Projected
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.projected')}
                 </Text>
                 <AnimatedNumber
                   value={month.projectedMonthEnd}
@@ -332,6 +367,7 @@ export default function TodayScreen() {
                   style={[
                     styles.statValue,
                     { color: overPace ? colors.destructive : colors.foreground },
+                    rtlText,
                   ]}
                   testID="stat-projected"
                 />
@@ -339,34 +375,49 @@ export default function TodayScreen() {
                   style={[
                     styles.statSub,
                     { color: overPace ? colors.destructive : colors.success },
+                    rtlText,
                   ]}
                 >
-                  {overPace ? 'past your ceiling' : 'under your ceiling'}
+                  {overPace ? t('today.pastCeiling') : t('today.underCeiling')}
                 </Text>
               </View>
             </View>
-            <View style={[styles.statGrid, styles.statGridBottom, { borderTopColor: colors.border }]}>
+            <View
+              style={[
+                styles.statGrid,
+                styles.statGridBottom,
+                rowReverse,
+                { borderTopColor: colors.border },
+              ]}
+            >
               <View style={styles.statCell}>
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-                  Average / day
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.avgPerDay')}
                 </Text>
                 <AnimatedNumber
                   value={month.avgPerDay}
                   format={format}
-                  style={[styles.statValue, { color: colors.foreground }]}
+                  style={[styles.statValue, { color: colors.foreground }, rtlText]}
                   testID="stat-avg-day"
                 />
-                <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-                  day {month.daysElapsed} of {month.daysInMonth}
+                <Text style={[styles.statSub, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.avgDayOf', {
+                    day: month.daysElapsed,
+                    total: month.daysInMonth,
+                  })}
                 </Text>
               </View>
               <View
-                style={[styles.statCell, styles.statCellRight, { borderLeftColor: colors.border }]}
+                style={[
+                  styles.statCell,
+                  isRTL ? styles.statCellRightRTL : styles.statCellRight,
+                  { borderLeftColor: colors.border, borderRightColor: colors.border },
+                ]}
               >
-                <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-                  Streak
+                <Text style={[styles.statLabel, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.streakLabel')}
                 </Text>
-                <View style={styles.streakValueRow}>
+                <View style={[styles.streakValueRow, rowReverse]}>
                   <AnimatedNumber
                     value={month.underBudgetStreak}
                     style={[styles.statValue, { color: colors.foreground }]}
@@ -382,8 +433,8 @@ export default function TodayScreen() {
                     }
                   />
                 </View>
-                <Text style={[styles.statSub, { color: colors.mutedForeground }]}>
-                  days under budget
+                <Text style={[styles.statSub, { color: colors.mutedForeground }, rtlText]}>
+                  {t('today.daysUnderBudget')}
                 </Text>
               </View>
             </View>
@@ -393,12 +444,24 @@ export default function TodayScreen() {
                 testID="committed-remaining"
               >
                 <Ionicons name="lock-closed-outline" size={14} color={colors.primary} />
-                <Text style={[styles.recurringHintText, { color: colors.mutedForeground }]}>
-                  {format(month.committedRemaining)} still committed before{' '}
-                  {month.cycleAnchored ? 'payday' : 'month end'}
-                  {month.upcomingObligations.length > 0
-                    ? ` — next: ${month.upcomingObligations[0].description}`
-                    : ''}
+                <Text style={[styles.recurringHintText, { color: colors.mutedForeground }, rtlText]}>
+                  {month.cycleAnchored
+                    ? month.upcomingObligations.length > 0
+                      ? t('today.committedBeforePaydayNext', {
+                          amount: format(month.committedRemaining),
+                          next: month.upcomingObligations[0].description,
+                        })
+                      : t('today.committedBeforePayday', {
+                          amount: format(month.committedRemaining),
+                        })
+                    : month.upcomingObligations.length > 0
+                      ? t('today.committedBeforeMonthEndNext', {
+                          amount: format(month.committedRemaining),
+                          next: month.upcomingObligations[0].description,
+                        })
+                      : t('today.committedBeforeMonthEnd', {
+                          amount: format(month.committedRemaining),
+                        })}
                 </Text>
               </View>
             ) : null}
@@ -407,6 +470,7 @@ export default function TodayScreen() {
                 onPress={() => router.push('/budget')}
                 style={({ pressed }) => [
                   styles.recurringHint,
+                  rowReverse,
                   {
                     borderTopColor: colors.border,
                     opacity: pressed ? 0.6 : 1,
@@ -415,13 +479,25 @@ export default function TodayScreen() {
                 testID="link-rituals"
               >
                 <Ionicons name="repeat" size={14} color={colors.primary} />
-                <Text style={[styles.recurringHintText, { color: colors.mutedForeground }]}>
-                  {month.activeRecurringCount} ritual
-                  {month.activeRecurringCount === 1 ? '' : 's'} auto-logging ≈{' '}
-                  {format(month.recurringMonthlyTotal)}/mo
+                <Text
+                  style={[
+                    styles.recurringHintText,
+                    { color: colors.mutedForeground },
+                    rtlText,
+                  ]}
+                >
+                  {month.activeRecurringCount === 1
+                    ? t('today.ritualsHintOne', {
+                        n: month.activeRecurringCount,
+                        amount: format(month.recurringMonthlyTotal),
+                      })
+                    : t('today.ritualsHintOther', {
+                        n: month.activeRecurringCount,
+                        amount: format(month.recurringMonthlyTotal),
+                      })}
                 </Text>
                 <Ionicons
-                  name="chevron-forward"
+                  name={isRTL ? 'chevron-back' : 'chevron-forward'}
                   size={14}
                   color={colors.mutedForeground}
                 />
@@ -434,8 +510,8 @@ export default function TodayScreen() {
       {/* Alerts & tips */}
       {alerts.length > 0 || tips.length > 0 ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Heads up
+          <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+            {t('today.headsUp')}
           </Text>
           <View style={{ gap: 10 }}>
             {alerts.map((a) => (
@@ -461,8 +537,8 @@ export default function TodayScreen() {
       {/* Category breakdown */}
       {summary && summary.categories.length > 0 ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            Where it went
+          <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+            {t('today.whereItWent')}
           </Text>
           <View
             style={[
@@ -479,6 +555,7 @@ export default function TodayScreen() {
                 key={c.category}
                 style={[
                   styles.catRow,
+                  rowReverse,
                   i > 0 && {
                     borderTopWidth: 1,
                     borderTopColor: colors.border,
@@ -487,13 +564,13 @@ export default function TodayScreen() {
               >
                 <CategoryIcon category={c.category} size={34} />
                 <View style={{ flex: 1, gap: 1 }}>
-                  <Text style={[styles.catName, { color: colors.foreground }]}>
-                    {c.category}
+                  <Text style={[styles.catName, { color: colors.foreground }, rtlText]}>
+                    {categoryName(c.category)}
                   </Text>
                   <Text
-                    style={[styles.catPct, { color: colors.mutedForeground }]}
+                    style={[styles.catPct, { color: colors.mutedForeground }, rtlText]}
                   >
-                    {Math.round(c.percentage)}% of today
+                    {t('today.pctOfToday', { pct: Math.round(c.percentage) })}
                   </Text>
                 </View>
                 <Text style={[styles.catTotal, { color: colors.foreground }]}>
@@ -508,8 +585,8 @@ export default function TodayScreen() {
       {/* Week strip */}
       {weekly.data ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            This week
+          <Text style={[styles.sectionTitle, { color: colors.foreground }, rtlText]}>
+            {t('today.thisWeek')}
           </Text>
           <View
             style={[
@@ -522,7 +599,7 @@ export default function TodayScreen() {
               },
             ]}
           >
-            <View style={styles.weekRow}>
+            <View style={[styles.weekRow, rowReverse]}>
               {weekly.data.days.map((d) => {
                 const isToday = d.date === todayKey;
                 const h = Math.max(6, Math.round((d.total / maxDay) * 64));
@@ -553,48 +630,58 @@ export default function TodayScreen() {
                         },
                       ]}
                     >
-                      {dateLabel(d.date).slice(0, 3)}
+                      {lang === 'ar'
+                        ? dateLabel(d.date, lang)
+                        : dateLabel(d.date, lang).slice(0, 3)}
                     </Text>
                   </View>
                 );
               })}
             </View>
-            <View style={[styles.weekStats, { borderTopColor: colors.border }]}>
+            <View
+              style={[
+                styles.weekStats,
+                rowReverse,
+                { borderTopColor: colors.border },
+              ]}
+            >
               <View style={styles.weekStat}>
                 <Text
-                  style={[styles.weekStatLabel, { color: colors.mutedForeground }]}
+                  style={[styles.weekStatLabel, { color: colors.mutedForeground }, rtlText]}
                 >
-                  Week total
+                  {t('today.weekTotal')}
                 </Text>
                 <Text
-                  style={[styles.weekStatValue, { color: colors.foreground }]}
+                  style={[styles.weekStatValue, { color: colors.foreground }, rtlText]}
                 >
                   {format(weekly.data.weekTotal)}
                 </Text>
               </View>
               <View style={styles.weekStat}>
                 <Text
-                  style={[styles.weekStatLabel, { color: colors.mutedForeground }]}
+                  style={[styles.weekStatLabel, { color: colors.mutedForeground }, rtlText]}
                 >
-                  Daily average
+                  {t('today.dailyAverage')}
                 </Text>
                 <Text
-                  style={[styles.weekStatValue, { color: colors.foreground }]}
+                  style={[styles.weekStatValue, { color: colors.foreground }, rtlText]}
                 >
                   {format(weekly.data.dailyAverage)}
                 </Text>
               </View>
               <View style={styles.weekStat}>
                 <Text
-                  style={[styles.weekStatLabel, { color: colors.mutedForeground }]}
+                  style={[styles.weekStatLabel, { color: colors.mutedForeground }, rtlText]}
                 >
-                  Top category
+                  {t('today.topCategory')}
                 </Text>
                 <Text
-                  style={[styles.weekStatValue, { color: colors.foreground }]}
+                  style={[styles.weekStatValue, { color: colors.foreground }, rtlText]}
                   numberOfLines={1}
                 >
-                  {weekly.data.topCategory ?? '—'}
+                  {weekly.data.topCategory
+                    ? categoryName(weekly.data.topCategory)
+                    : '—'}
                 </Text>
               </View>
             </View>
@@ -744,6 +831,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     paddingLeft: 14,
     paddingRight: 0,
+  },
+  statCellRightRTL: {
+    borderRightWidth: 1,
+    paddingRight: 14,
+    paddingLeft: 0,
   },
   statLabel: {
     fontSize: 11.5,

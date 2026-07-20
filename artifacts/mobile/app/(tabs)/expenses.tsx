@@ -20,6 +20,7 @@ import {
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useCategoryName, useLang, useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { useListExpenses, type Expense } from '@workspace/api-client-react';
 import * as Haptics from 'expo-haptics';
@@ -35,6 +36,9 @@ export default function ExpensesScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { format } = useCurrency();
+  const t = useT();
+  const { lang, isRTL } = useLang();
+  const categoryName = useCategoryName();
   const [category, setCategory] = useState<string | null>(null);
 
   const query = useListExpenses(category ? { category } : undefined);
@@ -49,11 +53,11 @@ export default function ExpensesScreen() {
     return [...byDate.entries()]
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([date, data]) => ({
-        title: dateLabel(date),
+        title: dateLabel(date, lang),
         total: data.reduce((s, e) => s + e.amount, 0),
         data,
       }));
-  }, [query.data]);
+  }, [query.data, lang]);
 
   const topPad = Platform.OS === 'web' ? 67 + 12 : insets.top + 12;
 
@@ -63,8 +67,14 @@ export default function ExpensesScreen() {
       testID="screen-expenses"
     >
       <View style={[styles.header, { paddingTop: topPad }]}>
-        <Text style={[styles.screenTitle, { color: colors.foreground }]}>
-          Expenses
+        <Text
+          style={[
+            styles.screenTitle,
+            { color: colors.foreground },
+            isRTL && { writingDirection: 'rtl', textAlign: 'right' },
+          ]}
+        >
+          {t('expenses.title')}
         </Text>
       </View>
 
@@ -96,7 +106,7 @@ export default function ExpensesScreen() {
                 },
               ]}
             >
-              All
+              {t('expenses.all')}
             </Text>
           </Pressable>
           {CATEGORIES.map((c) => {
@@ -107,6 +117,7 @@ export default function ExpensesScreen() {
                 onPress={() => setCategory(active ? null : c.name)}
                 style={[
                   styles.chip,
+                  isRTL && { flexDirection: 'row-reverse' },
                   {
                     backgroundColor: active ? colors.primary : colors.secondary,
                   },
@@ -130,7 +141,7 @@ export default function ExpensesScreen() {
                     },
                   ]}
                 >
-                  {c.name}
+                  {categoryName(c.name)}
                 </Text>
               </Pressable>
             );
@@ -155,20 +166,22 @@ export default function ExpensesScreen() {
       ) : query.isError ? (
         <EmptyState
           icon="cloud-offline-outline"
-          title="Couldn't load expenses"
-          actionLabel="Retry"
+          title={t('expenses.couldntLoad')}
+          actionLabel={t('common.retry')}
           onAction={() => query.refetch()}
         />
       ) : sections.length === 0 ? (
         <EmptyState
           icon="receipt-outline"
-          title={category ? `No ${category} expenses` : 'Nothing logged yet'}
-          message={
+          title={
             category
-              ? 'Try a different category or clear the filter.'
-              : 'Log your first expense and Ember will start watching the embers for you.'
+              ? t('expenses.noCategory', { category: categoryName(category) })
+              : t('expenses.nothingLogged')
           }
-          actionLabel="Add an expense"
+          message={
+            category ? t('expenses.filterHint') : t('expenses.firstHint')
+          }
+          actionLabel={t('expenses.addExpense')}
           onAction={() => router.push('/expense-form')}
         />
       ) : (
@@ -186,7 +199,12 @@ export default function ExpensesScreen() {
             />
           }
           renderSectionHeader={({ section }) => (
-            <View style={styles.sectionHeader}>
+            <View
+              style={[
+                styles.sectionHeader,
+                isRTL && { flexDirection: 'row-reverse' },
+              ]}
+            >
               <Text
                 style={[styles.sectionTitle, { color: colors.mutedForeground }]}
               >
@@ -215,6 +233,7 @@ export default function ExpensesScreen() {
         }}
         style={({ pressed }) => [
           styles.fab,
+          isRTL ? { left: 20 } : { right: 20 },
           {
             backgroundColor: colors.primary,
             bottom:
@@ -291,7 +310,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    right: 20,
     width: 58,
     height: 58,
     borderRadius: 29,

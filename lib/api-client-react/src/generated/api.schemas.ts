@@ -289,9 +289,22 @@ export const PreferencesCurrency = {
   AUD: 'AUD',
 } as const;
 
+/**
+ * UI + AI coach language ("en" default, "ar" enables RTL Arabic)
+ */
+export type PreferencesLanguage = typeof PreferencesLanguage[keyof typeof PreferencesLanguage];
+
+
+export const PreferencesLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
 export interface Preferences {
   id: number;
   currency: PreferencesCurrency;
+  /** UI + AI coach language ("en" default, "ar" enables RTL Arabic) */
+  language: PreferencesLanguage;
   /** Percent of daily limit at which warnings fire */
   alertThreshold: number;
   /** ISO datetime string */
@@ -311,8 +324,17 @@ export const PreferencesInputCurrency = {
   AUD: 'AUD',
 } as const;
 
+export type PreferencesInputLanguage = typeof PreferencesInputLanguage[keyof typeof PreferencesInputLanguage];
+
+
+export const PreferencesInputLanguage = {
+  en: 'en',
+  ar: 'ar',
+} as const;
+
 export interface PreferencesInput {
   currency: PreferencesInputCurrency;
+  language?: PreferencesInputLanguage;
   /**
      * @minimum 50
      * @maximum 100

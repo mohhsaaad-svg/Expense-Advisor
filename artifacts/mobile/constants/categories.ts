@@ -3,8 +3,30 @@ import type { Ionicons } from '@expo/vector-icons';
 
 export type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
+/**
+ * Canonical category ids — the English names stored in the API/DB and shared
+ * with the web app. This union is the single source of truth: adding a category
+ * here forces an Arabic label (see AR_CATEGORY_NAMES in lib/i18n.tsx) via an
+ * exhaustive Record, so a missing translation breaks `tsc`.
+ */
+export const CATEGORY_NAMES = [
+  'Food & Drink',
+  'Transport',
+  'Shopping',
+  'Health',
+  'Entertainment',
+  'Housing',
+  'Utilities',
+  'Remittances',
+  'Family support',
+  'Installments',
+  'Other',
+] as const;
+
+export type CategoryName = (typeof CATEGORY_NAMES)[number];
+
 export interface CategoryMeta {
-  name: string;
+  name: CategoryName;
   icon: IoniconName;
   color: string;
 }
@@ -47,9 +69,41 @@ export function currencySymbol(currency: string = 'USD'): string {
   return CURRENCY_SYMBOLS[currency] ?? '$';
 }
 
-export function formatMoney(n: number, currency: string = 'USD'): string {
+export type Lang = 'en' | 'ar';
+
+/**
+ * DIGITS DECISION: numbers stay in Western (Latin) digits even in Arabic.
+ * We use the "ar-u-nu-latn" locale so month/day names render in Arabic while
+ * the digits stay Latin. Money amounts, dates and percentages must remain
+ * Latin per product requirement. Everything is wrapped in try/catch because
+ * some Hermes/ICU builds don't ship the Arabic locale data.
+ */
+function intlLocale(lang: Lang): string {
+  return lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
+}
+
+export function formatMoney(
+  n: number,
+  currency: string = 'USD',
+  lang: Lang = 'en',
+): string {
   const decimals = currency === 'JPY' ? 0 : 2;
-  return `${currencySymbol(currency)}${n.toFixed(decimals)}`;
+  try {
+    return new Intl.NumberFormat(intlLocale(lang), {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(n);
+  } catch {
+    // Fallback: our own symbol + Latin-digit amount.
+    return `${currencySymbol(currency)}${n.toFixed(decimals)}`;
+  }
+}
+
+export function formatPercent(n: number, lang: Lang = 'en'): string {
+  const rounded = Math.round(n);
+  return lang === 'ar' ? `${rounded}٪` : `${rounded}%`;
 }
 
 export function toDateKey(d: Date): string {
@@ -59,17 +113,45 @@ export function toDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function dateLabel(key: string): string {
+export function dateLabel(key: string, lang: Lang = 'en'): string {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (key === toDateKey(today)) return 'Today';
-  if (key === toDateKey(yesterday)) return 'Yesterday';
+  if (key === toDateKey(today)) return lang === 'ar' ? 'اليوم' : 'Today';
+  if (key === toDateKey(yesterday))
+    return lang === 'ar' ? 'أمس' : 'Yesterday';
   const [y, m, d] = key.split('-').map((p) => parseInt(p, 10));
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
+  try {
+    return dt.toLocaleDateString(intlLocale(lang), {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+  }
+}
+
+/** Longer date used for goal deadlines & challenge start dates. */
+export function fullDayLabel(key: string, lang: Lang = 'en'): string {
+  const [y, m, d] = key.split('-').map((p) => parseInt(p, 10));
+  const dt = new Date(y, m - 1, d);
+  try {
+    return dt.toLocaleDateString(intlLocale(lang), {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dt.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
 }

@@ -22,10 +22,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { currencySymbol } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
+import { useT, type Lang } from "@/lib/i18n";
 
 const formSchema = z.object({
-  dailyLimit: z.coerce.number().min(1, "Daily limit must be at least $1"),
-  monthlyLimit: z.coerce.number().min(1, "Monthly limit must be at least $1"),
+  dailyLimit: z.coerce.number().min(1, "Daily limit must be at least 1"),
+  monthlyLimit: z.coerce.number().min(1, "Monthly limit must be at least 1"),
   // Empty string means "not set" — cleared to null on submit.
   salaryAmount: z.string(),
   salaryDay: z.string(),
@@ -40,6 +41,7 @@ export default function Budget() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { format, currency } = useCurrency();
+  const t = useT();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,11 +71,11 @@ export default function Budget() {
     const salaryAmount = values.salaryAmount.trim() === "" ? null : parseFloat(values.salaryAmount);
     const salaryDay = values.salaryDay.trim() === "" ? null : parseInt(values.salaryDay, 10);
     if (salaryAmount !== null && (Number.isNaN(salaryAmount) || salaryAmount < 1)) {
-      form.setError("salaryAmount", { message: "Enter a valid salary amount, or leave it empty." });
+      form.setError("salaryAmount", { message: t("budget.salaryAmountInvalid") });
       return;
     }
     if (salaryDay !== null && (Number.isNaN(salaryDay) || salaryDay < 1 || salaryDay > 31)) {
-      form.setError("salaryDay", { message: "Pick a day between 1 and 31, or leave it empty." });
+      form.setError("salaryDay", { message: t("budget.salaryDayInvalid") });
       return;
     }
     updateBudget.mutate(
@@ -92,14 +94,14 @@ export default function Budget() {
           queryClient.invalidateQueries({ queryKey: ["/api/insights/stats"] });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
-            title: "Settings saved",
-            description: "Your Ember limits have been successfully updated.",
+            title: t("toast.settingsSaved.title"),
+            description: t("toast.settingsSaved.desc"),
           });
         },
         onError: () => {
           toast({
-            title: "Error",
-            description: "Could not update limits. Please try again.",
+            title: t("toast.error.title"),
+            description: t("toast.limitsError.desc"),
             variant: "destructive"
           });
         }
@@ -111,8 +113,8 @@ export default function Budget() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Boundaries</h1>
-          <p className="text-lg text-muted-foreground font-light">Set your limits to prevent fires.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">{t('budget.title')}</h1>
+          <p className="text-lg text-muted-foreground font-light">{t('budget.subtitle')}</p>
         </div>
       </div>
 
@@ -130,14 +132,14 @@ export default function Budget() {
             </Card>
           ) : (
             <Card className="border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+              <div className="absolute top-0 end-0 w-64 h-64 bg-primary/5 rounded-bl-full rtl:rounded-bl-none rtl:rounded-br-full pointer-events-none" />
               <CardHeader className="p-8 pb-4">
                 <CardTitle className="flex items-center gap-3 text-2xl font-serif">
                   <ShieldCheck className="w-6 h-6 text-primary" />
-                  Spending Limits
+                  {t('budget.spendingLimits')}
                 </CardTitle>
                 <CardDescription className="text-base mt-2">
-                  Define how much oxygen your spending gets before we alert you.
+                  {t('budget.spendingLimitsDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-4">
@@ -148,14 +150,14 @@ export default function Budget() {
                       name="dailyLimit"
                       render={({ field }) => (
                         <FormItem className="space-y-3">
-                          <FormLabel className="text-lg font-medium">Daily Target</FormLabel>
+                          <FormLabel className="text-lg font-medium">{t('budget.dailyTarget')}</FormLabel>
                           <FormDescription className="text-sm">
-                            Your ideal max spending per day.
+                            {t('budget.dailyTargetDesc')}
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
-                              <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
+                              <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
+                              <Input type="number" className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -168,14 +170,14 @@ export default function Budget() {
                       name="monthlyLimit"
                       render={({ field }) => (
                         <FormItem className="space-y-3">
-                          <FormLabel className="text-lg font-medium">Monthly Ceiling</FormLabel>
+                          <FormLabel className="text-lg font-medium">{t('budget.monthlyCeiling')}</FormLabel>
                           <FormDescription className="text-sm">
-                            The absolute max you want to spend in a month.
+                            {t('budget.monthlyCeilingDesc')}
                           </FormDescription>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
-                              <Input type="number" className="pl-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
+                              <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
+                              <Input type="number" className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -184,9 +186,9 @@ export default function Budget() {
                     />
 
                     <div className="pt-2 border-t border-border/50 space-y-2">
-                      <div className="text-lg font-medium pt-4">Salary anchoring</div>
+                      <div className="text-lg font-medium pt-4">{t('budget.salaryAnchoring')}</div>
                       <p className="text-sm text-muted-foreground">
-                        Tell Ember when your salary lands and budgets run payday to payday instead of by calendar month.
+                        {t('budget.salaryAnchoringDesc')}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -195,14 +197,14 @@ export default function Budget() {
                         name="salaryAmount"
                         render={({ field }) => (
                           <FormItem className="space-y-3">
-                            <FormLabel className="text-base font-medium">Salary per payday</FormLabel>
+                            <FormLabel className="text-base font-medium">{t('budget.salaryPerPayday')}</FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">{currencySymbol(currency)}</span>
+                                <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">{currencySymbol(currency)}</span>
                                 <Input
                                   type="number"
-                                  placeholder="Optional"
-                                  className="pl-10 h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
+                                  placeholder={t('budget.salaryOptional')}
+                                  className="ps-10 h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
                                   data-testid="input-salary-amount"
                                   {...field}
                                 />
@@ -217,20 +219,20 @@ export default function Budget() {
                         name="salaryDay"
                         render={({ field }) => (
                           <FormItem className="space-y-3">
-                            <FormLabel className="text-base font-medium">Day it lands</FormLabel>
+                            <FormLabel className="text-base font-medium">{t('budget.dayItLands')}</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 min={1}
                                 max={31}
-                                placeholder="e.g. 25"
+                                placeholder={t('budget.dayItLandsPlaceholder')}
                                 className="h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
                                 data-testid="input-salary-day"
                                 {...field}
                               />
                             </FormControl>
                             <FormDescription className="text-xs">
-                              1–31 · leave both empty for calendar-month budgeting.
+                              {t('budget.dayItLandsDesc')}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -245,7 +247,7 @@ export default function Budget() {
                         className="h-14 gap-2 px-8 rounded-full shadow-lg shadow-primary/20 hover-elevate text-lg transition-all"
                       >
                         <Save className="w-5 h-5" />
-                        {updateBudget.isPending ? "Saving..." : "Save Limits"}
+                        {updateBudget.isPending ? t('common.saving') : t('budget.saveLimits')}
                       </Button>
                     </div>
                   </form>
@@ -263,12 +265,12 @@ export default function Budget() {
               <div className="w-12 h-12 bg-background rounded-2xl flex items-center justify-center shadow-sm">
                 <Flame className="w-6 h-6 text-primary" />
               </div>
-              <h3 className="font-serif font-bold text-2xl text-foreground">Why limits work</h3>
+              <h3 className="font-serif font-bold text-2xl text-foreground">{t('budget.whyLimitsWork')}</h3>
               <p className="text-base text-muted-foreground leading-relaxed">
-                A daily limit helps you make micro-decisions. Instead of stressing over a massive monthly number, you only have to think about today.
+                {t('budget.whyLimits1')}
               </p>
               <p className="text-base text-muted-foreground leading-relaxed">
-                We'll let you know when you're getting close to your daily boundary so you can adjust your plans before the day is over.
+                {t('budget.whyLimits2')}
               </p>
             </CardContent>
           </Card>
@@ -276,18 +278,20 @@ export default function Budget() {
           {budget && (
             <Card className="bg-primary/5 border-primary/10 shadow-none rounded-3xl">
               <CardContent className="p-8">
-                <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-3">Alignment Check</h3>
+                <h3 className="font-sans font-bold text-xs text-primary uppercase tracking-widest mb-3">{t('budget.alignmentCheck')}</h3>
                 <div className="text-base text-foreground mb-6 leading-relaxed font-medium">
-                  Your daily target equals <span className="font-bold">{format(budget.dailyLimit * 30)}</span> over a typical 30-day {budget.salaryDay !== null ? "salary cycle" : "month"}.
+                  {budget.salaryDay !== null
+                    ? t('budget.alignmentDescCycle', { amount: format(budget.dailyLimit * 30) })
+                    : t('budget.alignmentDesc', { amount: format(budget.dailyLimit * 30) })}
                 </div>
                 <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{budget.salaryDay !== null ? "Cycle ceiling" : "Ceiling"}</span>
+                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{budget.salaryDay !== null ? t('budget.cycleCeiling') : t('budget.ceiling')}</span>
                   <span className="text-foreground font-serif text-2xl font-bold">{format(budget.monthlyLimit)}</span>
                 </div>
                 {budget.salaryDay !== null && (
                   <div className="mt-4 p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Payday</span>
-                    <span className="text-foreground font-serif text-2xl font-bold">Day {budget.salaryDay}</span>
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('budget.payday')}</span>
+                    <span className="text-foreground font-serif text-2xl font-bold">{t('budget.paydayDay', { day: budget.salaryDay })}</span>
                   </div>
                 )}
               </CardContent>
@@ -318,41 +322,51 @@ function PreferencesCard() {
   const updatePreferences = useUpdatePreferences();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const t = useT();
 
   const [draftCurrency, setDraftCurrency] = useState<CurrencyCode | null>(null);
   const [draftThreshold, setDraftThreshold] = useState<string | null>(null);
+  const [draftLang, setDraftLang] = useState<Lang | null>(null);
 
   const currency = draftCurrency ?? (prefs?.currency as CurrencyCode | undefined) ?? "USD";
   const threshold = draftThreshold ?? String(prefs?.alertThreshold ?? 80);
-  const dirty = !!prefs && (currency !== prefs.currency || threshold !== String(prefs.alertThreshold));
+  const language = draftLang ?? ((prefs?.language as Lang | undefined) ?? "en");
+  const dirty =
+    !!prefs &&
+    (currency !== prefs.currency ||
+      threshold !== String(prefs.alertThreshold) ||
+      language !== (prefs.language ?? "en"));
 
   const save = () => {
-    const t = parseInt(threshold, 10);
-    if (Number.isNaN(t) || t < 50 || t > 100) {
+    const th = parseInt(threshold, 10);
+    if (Number.isNaN(th) || th < 50 || th > 100) {
       toast({
-        title: "Invalid threshold",
-        description: "Pick a percentage between 50 and 100.",
+        title: t("toast.invalidThreshold.title"),
+        description: t("toast.invalidThreshold.desc"),
         variant: "destructive",
       });
       return;
     }
     updatePreferences.mutate(
-      { data: { currency, alertThreshold: t } },
+      { data: { currency, alertThreshold: th, language } },
       {
         onSuccess: (updated) => {
           queryClient.setQueryData(getGetPreferencesQueryKey(), updated);
+          // Flip the whole UI (language/RTL + formatting) immediately.
+          queryClient.invalidateQueries({ queryKey: getGetPreferencesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           setDraftCurrency(null);
           setDraftThreshold(null);
+          setDraftLang(null);
           toast({
-            title: "Preferences saved",
-            description: "Ember now speaks your currency and warns at your pace.",
+            title: t("toast.prefsSaved.title"),
+            description: t("toast.prefsSaved.desc"),
           });
         },
         onError: () => {
           toast({
-            title: "Error",
-            description: "Could not save preferences. Please try again.",
+            title: t("toast.error.title"),
+            description: t("toast.prefsError.desc"),
             variant: "destructive",
           });
         },
@@ -365,10 +379,10 @@ function PreferencesCard() {
       <CardHeader className="p-8 pb-4">
         <CardTitle className="flex items-center gap-3 text-2xl font-serif">
           <Settings2 className="w-6 h-6 text-primary" />
-          Preferences
+          {t('prefs.title')}
         </CardTitle>
         <CardDescription className="text-base mt-2">
-          The currency Ember displays and how early it warns you.
+          {t('prefs.desc')}
         </CardDescription>
       </CardHeader>
       <CardContent className="p-8 pt-4">
@@ -381,8 +395,8 @@ function PreferencesCard() {
           <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-3">
-                <div className="text-lg font-medium">Currency</div>
-                <p className="text-sm text-muted-foreground">How amounts are displayed everywhere.</p>
+                <div className="text-lg font-medium">{t('prefs.currency')}</div>
+                <p className="text-sm text-muted-foreground">{t('prefs.currencyDesc')}</p>
                 <Select value={currency} onValueChange={(v) => setDraftCurrency(v as CurrencyCode)}>
                   <SelectTrigger
                     className="h-14 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-medium"
@@ -400,8 +414,24 @@ function PreferencesCard() {
                 </Select>
               </div>
               <div className="space-y-3">
-                <div className="text-lg font-medium">Alert threshold</div>
-                <p className="text-sm text-muted-foreground">Warn me once I've burned this much of a limit.</p>
+                <div className="text-lg font-medium">{t('prefs.language')}</div>
+                <p className="text-sm text-muted-foreground">{t('prefs.languageDesc')}</p>
+                <Select value={language} onValueChange={(v) => setDraftLang(v as Lang)}>
+                  <SelectTrigger
+                    className="h-14 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-medium"
+                    data-testid="select-language"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="en" className="rounded-lg cursor-pointer">English</SelectItem>
+                    <SelectItem value="ar" className="rounded-lg cursor-pointer">العربية</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-3">
+                <div className="text-lg font-medium">{t('prefs.alertThreshold')}</div>
+                <p className="text-sm text-muted-foreground">{t('prefs.alertThresholdDesc')}</p>
                 <div className="relative">
                   <Input
                     type="number"
@@ -409,10 +439,10 @@ function PreferencesCard() {
                     max={100}
                     value={threshold}
                     onChange={(e) => setDraftThreshold(e.target.value)}
-                    className="h-14 pr-10 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-serif"
+                    className="h-14 pe-10 rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20 text-lg font-serif"
                     data-testid="input-threshold"
                   />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">%</span>
+                  <span className="absolute end-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-lg">%</span>
                 </div>
               </div>
             </div>
@@ -425,7 +455,7 @@ function PreferencesCard() {
                 data-testid="button-save-preferences"
               >
                 <Save className="w-4 h-4" />
-                {updatePreferences.isPending ? "Saving..." : "Save Preferences"}
+                {updatePreferences.isPending ? t('common.saving') : t('prefs.save')}
               </Button>
             </div>
           </div>

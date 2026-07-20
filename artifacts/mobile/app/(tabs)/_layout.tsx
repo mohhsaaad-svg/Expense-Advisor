@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
@@ -20,15 +21,16 @@ import { SymbolView } from 'expo-symbols';
 // is a system-level appearance provided by iOS and cannot be overridden.
 // Custom brand colors are applied only on the ClassicTabLayout path (older iOS / Android / web).
 function NativeTabLayout() {
+  const t = useT();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: 'flame', selected: 'flame.fill' }} />
-        <Label>Today</Label>
+        <Label>{t('tab.today')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="expenses">
         <Icon sf="list.bullet" />
-        <Label>Expenses</Label>
+        <Label>{t('tab.expenses')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="coach">
         <Icon
@@ -37,15 +39,15 @@ function NativeTabLayout() {
             selected: 'bubble.left.and.bubble.right.fill',
           }}
         />
-        <Label>Coach</Label>
+        <Label>{t('tab.coach')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="goals">
         <Icon sf="target" />
-        <Label>Goals</Label>
+        <Label>{t('tab.goals')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="budget">
         <Icon sf={{ default: 'chart.pie', selected: 'chart.pie.fill' }} />
-        <Label>Budget</Label>
+        <Label>{t('tab.budget')}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -53,6 +55,7 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const t = useT();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
@@ -96,7 +99,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Today',
+          title: t('tab.today'),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView
@@ -116,7 +119,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="expenses"
         options={{
-          title: 'Expenses',
+          title: t('tab.expenses'),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView name="list.bullet" tintColor={color} size={24} />
@@ -132,7 +135,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="coach"
         options={{
-          title: 'Coach',
+          title: t('tab.coach'),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView
@@ -156,7 +159,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="goals"
         options={{
-          title: 'Goals',
+          title: t('tab.goals'),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView name="target" tintColor={color} size={24} />
@@ -172,7 +175,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="budget"
         options={{
-          title: 'Budget',
+          title: t('tab.budget'),
           tabBarIcon: ({ color, focused }) =>
             isIOS ? (
               <SymbolView

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLang } from "@/lib/i18n";
 
 /**
  * Animated counter: eases from the previously shown value (0 on mount) to
@@ -6,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
  */
 export function CountUp({
   value,
-  format = (n: number) => Math.round(n).toString(),
+  format,
   duration = 900,
   className,
 }: {
@@ -15,6 +16,13 @@ export function CountUp({
   duration?: number;
   className?: string;
 }) {
+  const lang = useLang();
+  const fmt =
+    format ??
+    ((n: number) =>
+      new Intl.NumberFormat(lang === "ar" ? "ar-u-nu-latn" : "en-US").format(
+        Math.round(n),
+      ));
   const [display, setDisplay] = useState(0);
   const prevRef = useRef(0);
 
@@ -48,5 +56,5 @@ export function CountUp({
     return () => cancelAnimationFrame(raf);
   }, [value, duration]);
 
-  return <span className={className}>{format(display)}</span>;
+  return <span className={className}>{fmt(display)}</span>;
 }

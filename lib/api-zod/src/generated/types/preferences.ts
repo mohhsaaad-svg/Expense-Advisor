@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PreferencesCurrency } from './preferencesCurrency';
+import type { PreferencesLanguage } from './preferencesLanguage';
 
 export interface Preferences {
   id: number;
   currency: PreferencesCurrency;
+  /** UI + AI coach language ("en" default, "ar" enables RTL Arabic) */
+  language: PreferencesLanguage;
   /** Percent of daily limit at which warnings fire */
   alertThreshold: number;
   /** ISO datetime string */

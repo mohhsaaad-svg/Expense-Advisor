@@ -4,28 +4,30 @@ import { LayoutDashboard, Receipt, PiggyBank, LogOut, Flame, Repeat, Target, Spa
 import { useAuth } from "@workspace/replit-auth-web";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useT } from "@/lib/i18n";
 
 export function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const t = useT();
 
   const links = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/expenses", label: "Expenses", icon: Receipt },
-    { href: "/recurring", label: "Rituals", icon: Repeat },
-    { href: "/budget", label: "Budget", icon: PiggyBank },
-    { href: "/goals", label: "Goals", icon: Target },
-    { href: "/coach", label: "Ask Ember", icon: Sparkles },
+    { href: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { href: "/expenses", label: t("nav.expenses"), icon: Receipt },
+    { href: "/recurring", label: t("nav.rituals"), icon: Repeat },
+    { href: "/budget", label: t("nav.budget"), icon: PiggyBank },
+    { href: "/goals", label: t("nav.goals"), icon: Target },
+    { href: "/coach", label: t("nav.coach"), icon: Sparkles },
   ];
 
   const initials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}` 
     : user?.email ? user.email[0].toUpperCase() : "?";
 
-  const displayName = user?.firstName ? `${user.firstName} ${user.lastName || ''}` : "My Account";
+  const displayName = user?.firstName ? `${user.firstName} ${user.lastName || ''}` : t("nav.myAccount");
 
   return (
-    <aside className="w-72 border-r border-border bg-card hidden md:flex flex-col">
+    <aside className="w-72 border-e border-border bg-card hidden md:flex flex-col">
       <div className="h-20 flex items-center px-8 border-b border-border/50">
         <Link href="/" className="flex items-center gap-3 cursor-pointer group">
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-sm group-hover:shadow-md transition-all">
@@ -38,7 +40,7 @@ export function Sidebar() {
       </div>
       
       <nav className="flex-1 py-8 px-4 space-y-2">
-        <div className="px-4 mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Menu</div>
+        <div className="px-4 mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">{t("nav.menu")}</div>
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location === link.href;
@@ -72,7 +74,7 @@ export function Sidebar() {
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ml-2" title="Log out">
+          <Button variant="ghost" size="icon" onClick={logout} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 ms-2" title={t("nav.logOut")}>
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
@@ -84,14 +86,15 @@ export function Sidebar() {
 export function MobileNav() {
   const [location] = useLocation();
   const { logout } = useAuth();
+  const t = useT();
 
   const links = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/expenses", label: "Expenses", icon: Receipt },
-    { href: "/recurring", label: "Rituals", icon: Repeat },
-    { href: "/budget", label: "Budget", icon: PiggyBank },
-    { href: "/goals", label: "Goals", icon: Target },
-    { href: "/coach", label: "Ask Ember", icon: Sparkles },
+    { href: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { href: "/expenses", label: t("nav.expenses"), icon: Receipt },
+    { href: "/recurring", label: t("nav.rituals"), icon: Repeat },
+    { href: "/budget", label: t("nav.budget"), icon: PiggyBank },
+    { href: "/goals", label: t("nav.goals"), icon: Target },
+    { href: "/coach", label: t("nav.coach"), icon: Sparkles },
   ];
 
   return (
@@ -123,7 +126,7 @@ export function MobileNav() {
       >
         <div className="flex flex-col items-center justify-center gap-1 transition-all mt-1 text-muted-foreground hover:text-destructive">
           <LogOut className="w-5 h-5" />
-          <span className="text-[10px] tracking-wide">Log out</span>
+          <span className="text-[10px] tracking-wide">{t("nav.logOut")}</span>
         </div>
       </button>
     </div>

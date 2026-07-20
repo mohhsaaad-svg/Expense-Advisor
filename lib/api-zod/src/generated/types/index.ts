@@ -53,6 +53,8 @@ export * from './preferences';
 export * from './preferencesCurrency';
 export * from './preferencesInput';
 export * from './preferencesInputCurrency';
+export * from './preferencesInputLanguage';
+export * from './preferencesLanguage';
 export * from './recurringExpense';
 export * from './recurringExpenseFrequency';
 export * from './recurringExpenseInput';

@@ -14,6 +14,8 @@ export const preferencesTable = pgTable(
     // ISO 4217 code used for display formatting on the clients and in
     // server-generated tip/alert messages
     currency: text("currency").notNull().default("USD"),
+    // UI + AI coach language: "en" (default) or "ar" (Arabic, RTL)
+    language: text("language").notNull().default("en"),
     // Percent of the daily limit at which "approaching limit" warnings fire (50-100)
     alertThreshold: integer("alert_threshold").notNull().default(80),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),

@@ -38,6 +38,9 @@ import {
   getGetSpendingTipsQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { useT, categoryLabel } from "@/lib/i18n";
+import { currencySymbol } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
 
 const CATEGORIES = [
   "Food & Drink",
@@ -63,6 +66,8 @@ const formSchema = z.object({
 export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const t = useT();
+  const { currency } = useCurrency();
   const queryClient = useQueryClient();
   const createExpense = useCreateExpense();
   const mutateFnRef = useRef(createExpense.mutate);
@@ -89,16 +94,16 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
           queryClient.invalidateQueries({ queryKey: getGetSpendingStatsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetSpendingTipsQueryKey() });
           toast({
-            title: "Record added",
-            description: "Your expense has been successfully logged.",
+            title: t("toast.recordAdded.title"),
+            description: t("toast.recordAdded.desc"),
           });
           setOpen(false);
           form.reset();
         },
         onError: () => {
           toast({
-            title: "Error",
-            description: "Failed to add expense. Please try again.",
+            title: t("toast.error.title"),
+            description: t("toast.addFailed.desc"),
             variant: "destructive",
           });
         },
@@ -111,7 +116,7 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
       <DialogTrigger asChild>
         {children || (
           <Button className="h-12 gap-2 px-6 rounded-full shadow-lg shadow-primary/20 hover-elevate transition-all font-medium text-base">
-            <Plus className="w-5 h-5" /> Add Expense
+            <Plus className="w-5 h-5" /> {t("expense.add")}
           </Button>
         )}
       </DialogTrigger>
@@ -119,7 +124,7 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
         <div className="h-2 bg-gradient-to-r from-primary via-orange-400 to-primary/50 w-full" />
         <div className="p-6">
           <DialogHeader className="mb-6">
-            <DialogTitle className="text-2xl font-serif font-bold text-foreground">Log an Expense</DialogTitle>
+            <DialogTitle className="text-2xl font-serif font-bold text-foreground">{t("expense.log")}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -129,11 +134,11 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Amount</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t("common.amount")}</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">$</span>
-                          <Input type="number" step="0.01" className="pl-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
+                          <span className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground font-serif">{currencySymbol(currency)}</span>
+                          <Input type="number" step="0.01" className="ps-8 rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 font-serif text-lg h-12" {...field} />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -145,7 +150,7 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
                   name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Date</FormLabel>
+                      <FormLabel className="text-sm font-medium">{t("common.date")}</FormLabel>
                       <FormControl>
                         <Input type="date" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12" {...field} />
                       </FormControl>
@@ -159,17 +164,17 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
                 name="category"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Category</FormLabel>
+                    <FormLabel className="text-sm font-medium">{t("common.category")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 h-12">
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue placeholder={t("common.selectCategory")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="rounded-xl">
                         {CATEGORIES.map((cat) => (
                           <SelectItem key={cat} value={cat} className="rounded-md cursor-pointer">
-                            {cat}
+                            {categoryLabel(t, cat)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -183,9 +188,9 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Description</FormLabel>
+                    <FormLabel className="text-sm font-medium">{t("common.description")}</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What was this for?" className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 min-h-[100px] resize-none" {...field} />
+                      <Textarea placeholder={t("common.descriptionPlaceholder")} className="rounded-xl bg-secondary/50 border-transparent focus-visible:ring-primary/20 min-h-[100px] resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -197,7 +202,7 @@ export function AddExpenseDialog({ children }: { children?: React.ReactNode }) {
                   className="w-full h-12 rounded-xl text-base font-medium"
                   disabled={createExpense.isPending}
                 >
-                  {createExpense.isPending ? "Adding..." : "Add Expense"}
+                  {createExpense.isPending ? t("expense.adding") : t("expense.add")}
                 </Button>
               </div>
             </form>

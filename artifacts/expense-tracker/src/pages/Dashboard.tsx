@@ -19,6 +19,7 @@ import { StatCards } from "@/components/StatCards";
 import { CountUp } from "@/components/CountUp";
 import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
+import { useT, categoryLabel } from "@/lib/i18n";
 
 export default function Dashboard() {
   const todayKey = localDateKey();
@@ -53,6 +54,7 @@ export default function Dashboard() {
   );
 
   const { format } = useCurrency();
+  const t = useT();
 
   const [paydayPromptDismissed, setPaydayPromptDismissed] = useState(
     () => localStorage.getItem("ember-payday-prompt-dismissed") === "1"
@@ -95,8 +97,8 @@ export default function Dashboard() {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-4 border-b border-border/50">
         <div>
-          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">Overview</h1>
-          <p className="text-lg text-muted-foreground font-light">Your money's temperature today.</p>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground mb-2">{t('dashboard.title')}</h1>
+          <p className="text-lg text-muted-foreground font-light">{t('dashboard.subtitle')}</p>
         </div>
         <AddExpenseDialog />
       </div>
@@ -113,23 +115,22 @@ export default function Dashboard() {
           </div>
           <div className="flex-1">
             <h4 className="font-serif font-semibold text-lg text-foreground mb-1">
-              Budget payday to payday
+              {t('dashboard.paydayPrompt.title')}
             </h4>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Tell Ember which day your salary lands and budgets will follow your
-              real salary cycle instead of the calendar month.
+              {t('dashboard.paydayPrompt.desc')}
             </p>
           </div>
           <Link href="/budget">
             <Button className="rounded-full px-6 shrink-0" data-testid="payday-prompt-link">
-              Set my payday
+              {t('dashboard.paydayPrompt.cta')}
             </Button>
           </Link>
           <button
             type="button"
             onClick={dismissPaydayPrompt}
-            aria-label="Dismiss"
-            className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            aria-label={t('dashboard.paydayPrompt.dismiss')}
+            className="absolute top-3 end-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             data-testid="payday-prompt-dismiss"
           >
             <X className="w-4 h-4" />
@@ -139,46 +140,48 @@ export default function Dashboard() {
 
       {stats && (
         <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative" data-testid="cycle-card">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-bl-full pointer-events-none" />
+          <div className="absolute top-0 end-0 w-48 h-48 bg-primary/5 rounded-bl-full rtl:rounded-bl-none rtl:rounded-br-full pointer-events-none" />
           <CardContent className="p-8">
             <div className="flex items-center gap-3 mb-6">
               <CalendarClock className="w-5 h-5 text-primary" />
               <span className="text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">
-                {stats.cycleAnchored ? "This salary cycle" : "This month"}
+                {stats.cycleAnchored ? t('dashboard.cycle.thisCycle') : t('dashboard.cycle.thisMonth')}
               </span>
               {stats.cycleAnchored && stats.daysUntilPayday !== null && (
-                <span className="ml-auto text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">
-                  {stats.daysUntilPayday} day{stats.daysUntilPayday === 1 ? "" : "s"} to payday
+                <span className="ms-auto text-xs font-bold bg-primary/10 text-primary px-3 py-1 rounded-full">
+                  {stats.daysUntilPayday === 1
+                    ? t('dashboard.cycle.daysToPayday', { days: stats.daysUntilPayday })
+                    : t('dashboard.cycle.daysToPaydayPlural', { days: stats.daysUntilPayday })}
                 </span>
               )}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
               <div>
-                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Spent so far</div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">{t('dashboard.cycle.spentSoFar')}</div>
                 <div className="font-serif text-2xl font-bold tracking-tight text-foreground">{format(stats.monthToDate)}</div>
                 <div className={cn("text-xs mt-1 font-medium", stats.monthPercentUsed >= 90 ? "text-destructive" : "text-muted-foreground")}>
-                  {stats.monthPercentUsed}% of {format(stats.monthlyLimit)}
+                  {t('dashboard.cycle.percentOf', { percent: stats.monthPercentUsed, amount: format(stats.monthlyLimit) })}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Projected</div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">{t('dashboard.cycle.projected')}</div>
                 <div className={cn("font-serif text-2xl font-bold tracking-tight", stats.projectedMonthEnd > stats.monthlyLimit ? "text-destructive" : "text-foreground")}>
                   {format(stats.projectedMonthEnd)}
                 </div>
                 <div className="text-xs mt-1 font-medium text-muted-foreground">
-                  by {stats.cycleAnchored ? "payday" : "month end"}
+                  {stats.cycleAnchored ? t('dashboard.cycle.byPayday') : t('dashboard.cycle.byMonthEnd')}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Still committed</div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">{t('dashboard.cycle.stillCommitted')}</div>
                 <div className="font-serif text-2xl font-bold tracking-tight text-foreground">{format(stats.committedRemaining)}</div>
                 <div className="text-xs mt-1 font-medium text-muted-foreground">
-                  of {format(stats.committedTotal)} obligations
+                  {t('dashboard.cycle.ofObligations', { amount: format(stats.committedTotal) })}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">
-                  {stats.cycleAnchored ? "Salary" : "Days elapsed"}
+                  {stats.cycleAnchored ? t('dashboard.cycle.salary') : t('dashboard.cycle.daysElapsed')}
                 </div>
                 <div className="font-serif text-2xl font-bold tracking-tight text-foreground">
                   {stats.cycleAnchored && stats.salaryAmount !== null
@@ -186,13 +189,15 @@ export default function Dashboard() {
                     : `${stats.daysElapsed} / ${stats.daysInMonth}`}
                 </div>
                 <div className="text-xs mt-1 font-medium text-muted-foreground">
-                  {stats.cycleAnchored ? `day ${stats.daysElapsed} of ${stats.daysInMonth}` : "of this window"}
+                  {stats.cycleAnchored
+                    ? t('dashboard.cycle.dayOf', { current: stats.daysElapsed, total: stats.daysInMonth })
+                    : t('dashboard.cycle.ofWindow')}
                 </div>
               </div>
             </div>
             {stats.upcomingObligations.length > 0 && (
               <div className="mt-6 pt-5 border-t border-border/50">
-                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">Due before {stats.cycleAnchored ? "payday" : "month end"}</div>
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-3">{stats.cycleAnchored ? t('dashboard.cycle.dueBeforePayday') : t('dashboard.cycle.dueBeforeMonthEnd')}</div>
                 <div className="flex flex-wrap gap-2">
                   {stats.upcomingObligations.slice(0, 4).map((o) => (
                     <span key={`${o.recurringId}-${o.date}`} className="text-xs font-medium bg-secondary text-secondary-foreground px-3 py-1.5 rounded-full">
@@ -212,9 +217,9 @@ export default function Dashboard() {
             <SummarySkeleton />
           ) : (
             <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-bl-full pointer-events-none" />
+              <div className="absolute top-0 end-0 w-64 h-64 bg-primary/5 rounded-bl-full rtl:rounded-bl-none rtl:rounded-br-full pointer-events-none" />
               <CardHeader className="pb-2 pt-8 px-8">
-                <CardTitle className="text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">Today's Burn</CardTitle>
+                <CardTitle className="text-sm font-sans font-semibold text-muted-foreground tracking-widest uppercase">{t('dashboard.todaysBurn')}</CardTitle>
               </CardHeader>
               <CardContent className="px-8 pb-8">
                 <div className="mb-8 flex items-baseline gap-3">
@@ -230,8 +235,8 @@ export default function Dashboard() {
                   <div className="flex justify-between text-sm font-medium">
                     <span className={cn("transition-colors", summary.totalSpent > summary.dailyLimit ? "text-destructive font-bold" : "text-foreground")}>
                       {summary.totalSpent > summary.dailyLimit
-                        ? `${format(summary.totalSpent - summary.dailyLimit)} over your limit`
-                        : `${format(summary.remaining)} left to spend safely`}
+                        ? t('dashboard.overLimit', { amount: format(summary.totalSpent - summary.dailyLimit) })
+                        : t('dashboard.leftToSpend', { amount: format(summary.remaining) })}
                     </span>
                     <span className="text-muted-foreground bg-secondary px-2 py-1 rounded-md text-xs font-bold">{Math.round(summary.percentUsed)}%</span>
                   </div>
@@ -246,15 +251,15 @@ export default function Dashboard() {
 
           {!loadingSummary && summary && summary.categories.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">Categories Today</h3>
+              <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">{t('dashboard.categoriesToday')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {summary.categories.map((cat) => (
                   <div key={cat.category} className="group p-5 rounded-2xl bg-card border border-card-border/60 shadow-sm hover-elevate flex items-center justify-between transition-all hover:border-primary/30">
                     <div>
-                      <div className="font-medium text-foreground text-lg mb-1">{cat.category}</div>
-                      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{cat.count} transaction{cat.count !== 1 ? 's' : ''}</div>
+                      <div className="font-medium text-foreground text-lg mb-1">{categoryLabel(t, cat.category)}</div>
+                      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{cat.count} {cat.count !== 1 ? t('dashboard.transactions') : t('dashboard.transaction')}</div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-end">
                       <div className="font-serif text-xl font-bold tracking-tight text-foreground">{format(cat.total)}</div>
                       <div className="text-xs text-muted-foreground mt-1 font-medium">{Math.round(cat.percentage)}%</div>
                     </div>
@@ -267,7 +272,7 @@ export default function Dashboard() {
 
         <div className="lg:col-span-5 space-y-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">Insights</h3>
+            <h3 className="text-xl font-serif font-semibold tracking-tight text-foreground">{t('dashboard.insights')}</h3>
           </div>
           
           <div className="space-y-4">
@@ -303,8 +308,8 @@ export default function Dashboard() {
                 <div className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                   <Flame className="h-6 w-6 text-muted-foreground/50" />
                 </div>
-                <h4 className="font-serif font-semibold text-lg mb-2">Quiet on the front</h4>
-                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">Your spending is perfectly aligned with your goals today.</p>
+                <h4 className="font-serif font-semibold text-lg mb-2">{t('dashboard.quietTitle')}</h4>
+                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">{t('dashboard.quietDesc')}</p>
               </div>
             )}
           </div>
