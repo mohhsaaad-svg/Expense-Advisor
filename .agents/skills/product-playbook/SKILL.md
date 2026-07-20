@@ -24,6 +24,7 @@ Don't over-interview: ask what changes the build, infer the rest.
 - **One artifact per product.** A new product is a NEW artifact, never bolted onto an existing one. Extend an existing artifact only when it is genuinely the same product (same domain, branding, purpose).
 - Use the `artifacts` skill to create and register. Give the artifact a **matching `slug` and `previewPath`** (e.g. slug `mobile` → previewPath `/mobile`).
 - Follow the `pnpm-workspace` skill: packages are `@workspace/*`, shared code lives in `lib/*`, apps in `artifacts/*`.
+- **Bootstrap from the `product-scaffold` skill** — it is the copyable starter captured from Ember (monorepo wiring, Replit Auth, OpenAPI codegen, per-user isolation, money, design tokens). Don't re-derive that wiring by hand.
 - Document the product in `replit.md` under its own section and add it to the Products roster.
 
 ## 3. Build conventions (proven on Ember)
