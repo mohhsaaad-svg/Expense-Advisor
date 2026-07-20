@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/ember/EmptyState';
 import { ExpenseRow } from '@/components/ember/ExpenseRow';
+import { Skeleton } from '@/components/ember/Skeleton';
 import {
   CATEGORIES,
   dateLabel,
@@ -139,7 +139,19 @@ export default function ExpensesScreen() {
       </View>
 
       {query.isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
+        <View style={styles.loadingWrap} testID="expenses-loading">
+          <Skeleton width={90} height={12} style={{ marginBottom: 12 }} />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <View key={i} style={styles.loadingRow}>
+              <Skeleton width={40} height={40} radius={20} />
+              <View style={{ flex: 1, gap: 7 }}>
+                <Skeleton width="62%" height={14} />
+                <Skeleton width="36%" height={11} />
+              </View>
+              <Skeleton width={56} height={14} />
+            </View>
+          ))}
+        </View>
       ) : query.isError ? (
         <EmptyState
           icon="cloud-offline-outline"
@@ -249,6 +261,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 150,
+  },
+  loadingWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
   },
   sectionHeader: {
     flexDirection: 'row',

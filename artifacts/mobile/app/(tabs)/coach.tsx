@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState } from '@/components/ember/EmptyState';
+import { Skeleton } from '@/components/ember/Skeleton';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { streamAdvisorReply } from '@/lib/sse';
@@ -84,8 +86,9 @@ export default function CoachScreen() {
   });
 
   const serverMessages = typeof activeId === 'number' ? (convo.data?.messages ?? []) : [];
+  const convoFailed = convo.isError && typeof activeId === 'number';
   const showEmpty =
-    !pending && serverMessages.length === 0 && !convo.isLoading;
+    !pending && serverMessages.length === 0 && !convo.isLoading && !convoFailed;
 
   const send = async (text: string) => {
     const content = text.trim();
@@ -209,7 +212,30 @@ export default function CoachScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {convo.isLoading && typeof activeId === 'number' ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+            <View style={{ gap: 10, marginTop: 8 }} testID="coach-loading">
+              <Skeleton
+                width="64%"
+                height={44}
+                radius={colorTokens.radius}
+                style={{ alignSelf: 'flex-end' }}
+              />
+              <Skeleton width="82%" height={72} radius={colorTokens.radius} />
+              <Skeleton
+                width="52%"
+                height={44}
+                radius={colorTokens.radius}
+                style={{ alignSelf: 'flex-end' }}
+              />
+            </View>
+          ) : null}
+
+          {convoFailed ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="Couldn't load this chat"
+              actionLabel="Retry"
+              onAction={() => convo.refetch()}
+            />
           ) : null}
 
           {showEmpty ? (

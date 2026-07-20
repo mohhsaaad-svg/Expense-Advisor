@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import { Skeleton } from '@/components/ember/Skeleton';
 import { CATEGORIES, currencySymbol, dateLabel, toDateKey } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
@@ -206,11 +208,22 @@ export default function RecurringFormScreen() {
       </View>
 
       {isEdit && rules.isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
+        <View style={styles.form} testID="form-loading">
+          <Skeleton
+            width={150}
+            height={40}
+            radius={10}
+            style={{ alignSelf: 'center', marginVertical: 10 }}
+          />
+          <Skeleton width={80} height={12} style={{ marginTop: 12 }} />
+          <Skeleton height={48} radius={12} />
+          <Skeleton width={80} height={12} style={{ marginTop: 12 }} />
+          <Skeleton height={48} radius={12} />
+        </View>
       ) : (
-        <ScrollView
+        <KeyboardAwareScrollViewCompat
           contentContainerStyle={styles.form}
-          keyboardShouldPersistTaps="handled"
+          bottomOffset={110}
         >
           {/* Amount */}
           <View style={styles.amountWrap}>
@@ -408,7 +421,7 @@ export default function RecurringFormScreen() {
               Couldn't save — check the fields and try again.
             </Text>
           ) : null}
-        </ScrollView>
+        </KeyboardAwareScrollViewCompat>
       )}
 
       {/* Save */}

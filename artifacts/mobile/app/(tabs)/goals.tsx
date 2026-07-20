@@ -12,9 +12,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/ember/EmptyState';
 import { ProgressBar } from '@/components/ember/ProgressBar';
+import { Skeleton } from '@/components/ember/Skeleton';
 import { CATEGORIES, currencySymbol, toDateKey } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
@@ -178,7 +180,21 @@ export default function GoalsScreen() {
           </View>
 
           {goals.isLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: colorTokens.radius,
+                },
+              ]}
+              testID="goals-loading"
+            >
+              <Skeleton width="55%" height={15} />
+              <Skeleton width="40%" height={12} style={{ marginTop: 9 }} />
+              <Skeleton height={10} radius={5} style={{ marginTop: 14 }} />
+            </View>
           ) : goals.isError ? (
             <EmptyState
               icon="cloud-offline-outline"
@@ -197,13 +213,16 @@ export default function GoalsScreen() {
                 },
               ]}
             >
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                Nothing you're saving for yet
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Give your money a destination — a trip, an emergency fund, a new
-                bike. Ember tracks the progress and the coach keeps it in mind.
-              </Text>
+              <EmptyState
+                icon="flag-outline"
+                title="Nothing you're saving for yet"
+                message="Give your money a destination — a trip, an emergency fund, a new bike. Ember tracks the progress and the coach keeps it in mind."
+                actionLabel="Start a goal"
+                onAction={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setGoalModal({ mode: 'create' });
+                }}
+              />
             </View>
           ) : (
             (goals.data ?? []).map((g) => {
@@ -358,7 +377,21 @@ export default function GoalsScreen() {
           </View>
 
           {challenges.isLoading ? (
-            <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderRadius: colorTokens.radius,
+                },
+              ]}
+              testID="challenges-loading"
+            >
+              <Skeleton width="55%" height={15} />
+              <Skeleton width="40%" height={12} style={{ marginTop: 9 }} />
+              <Skeleton height={10} radius={5} style={{ marginTop: 14 }} />
+            </View>
           ) : challenges.isError ? (
             <EmptyState
               icon="cloud-offline-outline"
@@ -377,13 +410,16 @@ export default function GoalsScreen() {
                 },
               ]}
             >
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                No challenges running
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Try a week without takeout or a no-shopping month. Log an expense
-                in that category and the streak breaks — honest accountability.
-              </Text>
+              <EmptyState
+                icon="trophy-outline"
+                title="No challenges running"
+                message="Try a week without takeout or a no-shopping month. Log an expense in that category and the streak breaks — honest accountability."
+                actionLabel="Start a challenge"
+                onAction={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setChallengeOpen(true);
+                }}
+              />
             </View>
           ) : (
             (challenges.data ?? []).map((c) => {
@@ -395,8 +431,8 @@ export default function GoalsScreen() {
                 c.status === 'active'
                   ? { bg: colors.accent, fg: colors.accentForeground, label: 'Active' }
                   : c.status === 'completed'
-                    ? { bg: colors.secondary, fg: colors.success, label: 'Done' }
-                    : { bg: colors.secondary, fg: colors.destructive, label: 'Broken' };
+                    ? { bg: `${colors.success}1A`, fg: colors.success, label: 'Done' }
+                    : { bg: `${colors.destructive}14`, fg: colors.destructive, label: 'Broken' };
               const notStarted = c.startDate > todayKey;
               return (
                 <View
@@ -532,24 +568,26 @@ function SheetShell({
   const insets = useSafeAreaInsets();
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: colors.background,
-            paddingBottom: insets.bottom + 20,
-          },
-        ]}
-      >
-        <View style={styles.sheetHandleWrap}>
-          <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+      <KeyboardAvoidingView behavior="padding" style={styles.sheetFlex}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.background,
+              paddingBottom: insets.bottom + 20,
+            },
+          ]}
+        >
+          <View style={styles.sheetHandleWrap}>
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+          </View>
+          <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
+            {title}
+          </Text>
+          {children}
         </View>
-        <Text style={[styles.sheetTitle, { color: colors.foreground }]}>
-          {title}
-        </Text>
-        {children}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -1181,15 +1219,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_500Medium',
     marginTop: 8,
   },
-  emptyTitle: {
-    fontSize: 15.5,
-    fontFamily: 'Outfit_600SemiBold',
-  },
-  emptyText: {
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: 'Outfit_400Regular',
-    marginTop: 4,
+  sheetFlex: {
+    flex: 1,
   },
   backdrop: {
     flex: 1,

@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { EmptyState } from '@/components/ember/EmptyState';
+import { Skeleton } from '@/components/ember/Skeleton';
 import { currencySymbol } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
@@ -202,7 +203,22 @@ export default function BudgetScreen() {
       </Text>
 
       {budget.isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderRadius: colorTokens.radius,
+            },
+          ]}
+          testID="budget-loading"
+        >
+          <Skeleton width={130} height={16} />
+          <Skeleton width="85%" height={12} style={{ marginTop: 2 }} />
+          <Skeleton height={48} radius={12} style={{ marginTop: 14 }} />
+          <Skeleton height={48} radius={12} style={{ marginTop: 6 }} />
+        </View>
       ) : budget.isError ? (
         <EmptyState
           icon="cloud-offline-outline"
@@ -404,7 +420,18 @@ export default function BudgetScreen() {
         </Text>
 
         {rules.isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
+          <View style={{ paddingVertical: 6 }} testID="rituals-loading">
+            {[0, 1].map((i) => (
+              <View key={i} style={styles.ritualRow}>
+                <Skeleton width={40} height={40} radius={20} />
+                <View style={{ flex: 1, gap: 7 }}>
+                  <Skeleton width="55%" height={14} />
+                  <Skeleton width="35%" height={11} />
+                </View>
+                <Skeleton width={44} height={24} radius={12} />
+              </View>
+            ))}
+          </View>
         ) : (rules.data ?? []).length === 0 ? (
           <Text style={[styles.emptyRituals, { color: colors.mutedForeground }]}>
             Nothing repeats yet. Add rent, subscriptions or your daily coffee —
@@ -686,7 +713,7 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay_700Bold',
   },
   card: {
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     gap: 6,
   },

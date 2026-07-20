@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -14,6 +13,7 @@ import { EmptyState } from '@/components/ember/EmptyState';
 import { AnimatedNumber } from '@/components/ember/AnimatedNumber';
 import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { ProgressBar } from '@/components/ember/ProgressBar';
+import { Skeleton } from '@/components/ember/Skeleton';
 import { TipCard } from '@/components/ember/TipCard';
 import { dateLabel, toDateKey } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
@@ -148,7 +148,12 @@ export default function TodayScreen() {
         ]}
       >
         {daily.isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ padding: 30 }} />
+          <View style={{ gap: 10 }} testID="hero-loading">
+            <Skeleton width={170} height={42} radius={10} />
+            <Skeleton width={225} height={14} />
+            <Skeleton height={12} radius={6} style={{ marginTop: 10 }} />
+            <Skeleton width={150} height={14} style={{ marginTop: 4 }} />
+          </View>
         ) : daily.isError ? (
           <EmptyState
             icon="cloud-offline-outline"
@@ -541,6 +546,11 @@ const styles = StyleSheet.create({
   heroCard: {
     padding: 22,
     borderWidth: 1,
+    shadowColor: '#2E241F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
   },
   streakPill: {
     position: 'absolute',
