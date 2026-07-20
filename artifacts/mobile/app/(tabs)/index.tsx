@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Platform,
   Pressable,
@@ -32,6 +33,8 @@ import {
 } from '@workspace/api-client-react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+
+const PAYDAY_PROMPT_KEY = 'ember-payday-prompt-dismissed';
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -77,6 +80,18 @@ export default function TodayScreen() {
       },
     },
   );
+
+  // null = still loading dismissal state; avoids flashing the prompt.
+  const [paydayPromptDismissed, setPaydayPromptDismissed] = useState<boolean | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(PAYDAY_PROMPT_KEY)
+      .then((v) => setPaydayPromptDismissed(v === '1'))
+      .catch(() => setPaydayPromptDismissed(false));
+  }, []);
+  const dismissPaydayPrompt = () => {
+    setPaydayPromptDismissed(true);
+    AsyncStorage.setItem(PAYDAY_PROMPT_KEY, '1').catch(() => {});
+  };
 
   const refreshing =
     daily.isRefetching ||
@@ -206,6 +221,50 @@ export default function TodayScreen() {
           </>
         ) : null}
       </View>
+
+      {/* Payday prompt */}
+      {month && !month.cycleAnchored && paydayPromptDismissed === false ? (
+        <View
+          style={[
+            styles.paydayPrompt,
+            {
+              backgroundColor: colors.accent,
+              borderRadius: colorTokens.radius,
+            },
+          ]}
+          testID="payday-prompt"
+        >
+          <View style={styles.paydayPromptHeader}>
+            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+            <Text style={[styles.paydayPromptTitle, { color: colors.accentForeground }]}>
+              Budget payday to payday
+            </Text>
+            <Pressable
+              onPress={dismissPaydayPrompt}
+              hitSlop={8}
+              testID="payday-prompt-dismiss"
+            >
+              <Ionicons name="close" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+          <Text style={[styles.paydayPromptText, { color: colors.accentForeground }]}>
+            Set the day your salary lands and Ember budgets follow your real
+            salary cycle instead of the calendar month.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/budget')}
+            style={({ pressed }) => [
+              styles.paydayPromptBtn,
+              { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+            ]}
+            testID="payday-prompt-link"
+          >
+            <Text style={[styles.paydayPromptBtnText, { color: colors.primaryForeground }]}>
+              Set my payday
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Cycle counters */}
       {month ? (
@@ -632,6 +691,36 @@ const styles = StyleSheet.create({
   },
   paydayText: {
     fontSize: 12,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  paydayPrompt: {
+    padding: 16,
+    gap: 10,
+    marginBottom: 24,
+  },
+  paydayPromptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  paydayPromptTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Outfit_600SemiBold',
+  },
+  paydayPromptText: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: 'Outfit_400Regular',
+  },
+  paydayPromptBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  paydayPromptBtnText: {
+    fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
   },
   card: {

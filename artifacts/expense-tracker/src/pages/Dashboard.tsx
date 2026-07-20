@@ -7,10 +7,13 @@ import {
   getGetSpendingStatsQueryKey,
 } from "@workspace/api-client-react";
 import { localDateKey } from "@/lib/utils";
+import { useState } from "react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SummarySkeleton } from "@/components/Skeletons";
-import { Flame, Lightbulb, TrendingDown, ShieldAlert, CalendarClock } from "lucide-react";
+import { Flame, Lightbulb, TrendingDown, ShieldAlert, CalendarClock, X } from "lucide-react";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { StatCards } from "@/components/StatCards";
 import { CountUp } from "@/components/CountUp";
@@ -51,6 +54,15 @@ export default function Dashboard() {
 
   const { format } = useCurrency();
 
+  const [paydayPromptDismissed, setPaydayPromptDismissed] = useState(
+    () => localStorage.getItem("ember-payday-prompt-dismissed") === "1"
+  );
+  const dismissPaydayPrompt = () => {
+    localStorage.setItem("ember-payday-prompt-dismissed", "1");
+    setPaydayPromptDismissed(true);
+  };
+  const showPaydayPrompt = !!stats && !stats.cycleAnchored && !paydayPromptDismissed;
+
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "alert":
@@ -90,6 +102,40 @@ export default function Dashboard() {
       </div>
 
       <StatCards />
+
+      {showPaydayPrompt && (
+        <div
+          className="relative p-6 rounded-3xl border border-primary/20 bg-primary/5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm"
+          data-testid="payday-prompt"
+        >
+          <div className="w-12 h-12 shrink-0 bg-background rounded-2xl flex items-center justify-center shadow-sm">
+            <CalendarClock className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-serif font-semibold text-lg text-foreground mb-1">
+              Budget payday to payday
+            </h4>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Tell Ember which day your salary lands and budgets will follow your
+              real salary cycle instead of the calendar month.
+            </p>
+          </div>
+          <Link href="/budget">
+            <Button className="rounded-full px-6 shrink-0" data-testid="payday-prompt-link">
+              Set my payday
+            </Button>
+          </Link>
+          <button
+            type="button"
+            onClick={dismissPaydayPrompt}
+            aria-label="Dismiss"
+            className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            data-testid="payday-prompt-dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {stats && (
         <Card className="bg-card border-card-border/60 shadow-sm rounded-3xl overflow-hidden relative" data-testid="cycle-card">
