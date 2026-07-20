@@ -12,4 +12,5 @@
 - [gitPush upstream workaround](github-push-upstream.md) — gitPush callback refuses when main tracks a subrepl remote (or has no upstream); re-point upstream to origin/main, push, restore.
 - [Vite config env gating](vite-config-env-gating.md) — PORT must be serve-only, BASE_PATH needs a canonical fallback; async defineConfig + local plugins hit a misleading TS2769.
 - [Expo static build ports](expo-static-build-ports.md) — static Expo Go build must grab a free Metro port dynamically; 8081 collides → interactive prompt → non-interactive death; run detached, poll log.
+- [Signed-in visual QA recipe](signed-in-visual-qa.md) — no testing subagent here; dev test-login route + Expo-web qaToken/localStorage hook + dev CORS for the Expo origin; beware CountUp mid-animation screenshots.
 - [Shell self-match trap](shell-selfmatch-trap.md) — pkill/pgrep -f patterns match the invoking shell’s own command string: silent self-kill or false “still running” polls.

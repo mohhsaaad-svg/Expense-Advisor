@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CategoryIcon } from '@/components/ember/CategoryIcon';
 import { EmptyState } from '@/components/ember/EmptyState';
 import { Skeleton } from '@/components/ember/Skeleton';
-import { currencySymbol } from '@/constants/categories';
+import { currencySymbol, currencyDecimals } from '@/constants/categories';
 import colorTokens from '@/constants/colors';
 import { useColors } from '@/hooks/useColors';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -105,6 +105,9 @@ export default function BudgetScreen() {
   const [thresholdDraft, setThresholdDraft] = useState<number | null>(null);
   const [savedPrefs, setSavedPrefs] = useState(false);
 
+  const currencyValue: CurrencyOption =
+    currencyDraft ?? ((prefs.data?.currency as CurrencyOption | undefined) ?? 'USD');
+
   const dailyValue =
     dailyDraft ?? (budget.data ? String(budget.data.dailyLimit) : '');
   const monthlyValue =
@@ -113,7 +116,7 @@ export default function BudgetScreen() {
   const salaryAmountValue =
     salaryAmountDraft ??
     (budget.data && budget.data.salaryAmount !== null
-      ? String(budget.data.salaryAmount)
+      ? budget.data.salaryAmount.toFixed(currencyDecimals(currencyValue))
       : '');
   const salaryDayValue =
     salaryDayDraft ??
@@ -150,8 +153,6 @@ export default function BudgetScreen() {
       parsedSalaryAmount !== budget.data.salaryAmount ||
       parsedSalaryDay !== budget.data.salaryDay);
 
-  const currencyValue: CurrencyOption =
-    currencyDraft ?? ((prefs.data?.currency as CurrencyOption | undefined) ?? 'USD');
   const languageValue: Lang =
     languageDraft ?? ((prefs.data?.language as Lang | undefined) ?? 'en');
   const thresholdValue = thresholdDraft ?? prefs.data?.alertThreshold ?? 80;

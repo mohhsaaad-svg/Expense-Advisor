@@ -24,6 +24,18 @@ export function formatCurrency(
   }).format(amount);
 }
 
+/** Number of decimal places the currency uses (3 for JOD/KWD/BHD, 0 for JPY, 2 otherwise). */
+export function currencyDecimals(currency: string = "USD"): number {
+  try {
+    return (
+      new Intl.NumberFormat("en-US", { style: "currency", currency }).resolvedOptions()
+        .maximumFractionDigits ?? 2
+    );
+  } catch {
+    return 2;
+  }
+}
+
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
   EUR: "€",

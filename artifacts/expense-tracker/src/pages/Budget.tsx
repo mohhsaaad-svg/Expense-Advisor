@@ -22,7 +22,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Flame, Save, ShieldCheck, Settings2, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { currencySymbol } from "@/lib/utils";
+import { currencySymbol, currencyDecimals } from "@/lib/utils";
+
+/**
+ * Inline padding that clears the currency prefix inside an input.
+ * Multi-letter symbols (JOD, CA$…) are wider than the default ps-10.
+ */
+function prefixPadStyle(symbol: string): React.CSSProperties {
+  return { paddingInlineStart: `calc(1.6rem + ${Math.max(symbol.length, 1) * 0.72}em)` };
+}
 import { useCurrency } from "@/hooks/use-currency";
 import { useT, type Lang } from "@/lib/i18n";
 
@@ -57,19 +65,26 @@ export default function Budget() {
     },
   });
 
-  const initializedForId = useRef<number | null>(null);
+  const initializedForKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (budget && initializedForId.current !== budget.id) {
-      initializedForId.current = budget.id;
+    // Re-initialize when the budget row or the display currency changes (the
+    // currency drives how many decimals the salary input shows), but never
+    // clobber in-progress edits.
+    const key = `${budget?.id}:${currency}`;
+    if (budget && initializedForKey.current !== key && !form.formState.isDirty) {
+      initializedForKey.current = key;
       form.reset({
         dailyLimit: budget.dailyLimit,
         monthlyLimit: budget.monthlyLimit,
-        salaryAmount: budget.salaryAmount === null ? "" : String(budget.salaryAmount),
+        salaryAmount:
+          budget.salaryAmount === null
+            ? ""
+            : budget.salaryAmount.toFixed(currencyDecimals(currency)),
         salaryDay: budget.salaryDay === null ? "" : String(budget.salaryDay),
       });
     }
-  }, [budget, form]);
+  }, [budget, form, currency]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const salaryAmount = values.salaryAmount.trim() === "" ? null : parseFloat(values.salaryAmount);
@@ -162,7 +177,7 @@ export default function Budget() {
                           <FormControl>
                             <div className="relative">
                               <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
-                              <Input type="number" className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
+                              <Input type="number" style={prefixPadStyle(currencySymbol(currency))} className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -182,7 +197,7 @@ export default function Budget() {
                           <FormControl>
                             <div className="relative">
                               <span className="absolute start-5 top-1/2 -translate-y-1/2 text-muted-foreground font-serif text-xl">{currencySymbol(currency)}</span>
-                              <Input type="number" className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
+                              <Input type="number" style={prefixPadStyle(currencySymbol(currency))} className="ps-10 h-16 text-2xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20" {...field} />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -210,6 +225,7 @@ export default function Budget() {
                                   type="number"
                                   step="0.001"
                                   placeholder={t('budget.salaryOptional')}
+                                  style={prefixPadStyle(currencySymbol(currency))}
                                   className="ps-10 h-14 text-xl font-serif rounded-2xl bg-secondary/30 border-transparent focus-visible:ring-primary/20"
                                   data-testid="input-salary-amount"
                                   {...field}
@@ -290,14 +306,14 @@ export default function Budget() {
                     ? t('budget.alignmentDescCycle', { amount: format(budget.dailyLimit * 30) })
                     : t('budget.alignmentDesc', { amount: format(budget.dailyLimit * 30) })}
                 </div>
-                <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
+                <div className="p-4 bg-background/50 rounded-2xl border border-primary/10 flex flex-wrap justify-between items-center gap-x-4 gap-y-1">
                   <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{budget.salaryDay !== null ? t('budget.cycleCeiling') : t('budget.ceiling')}</span>
-                  <span className="text-foreground font-serif text-2xl font-bold">{format(budget.monthlyLimit)}</span>
+                  <span className="text-foreground font-serif text-xl font-bold whitespace-nowrap">{format(budget.monthlyLimit)}</span>
                 </div>
                 {budget.salaryDay !== null && (
-                  <div className="mt-4 p-4 bg-background/50 rounded-2xl border border-primary/10 flex justify-between items-center">
+                  <div className="mt-4 p-4 bg-background/50 rounded-2xl border border-primary/10 flex flex-wrap justify-between items-center gap-x-4 gap-y-1">
                     <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t('budget.payday')}</span>
-                    <span className="text-foreground font-serif text-2xl font-bold">{t('budget.paydayDay', { day: budget.salaryDay })}</span>
+                    <span className="text-foreground font-serif text-xl font-bold whitespace-nowrap">{t('budget.paydayDay', { day: budget.salaryDay })}</span>
                   </div>
                 )}
               </CardContent>

@@ -90,6 +90,11 @@ function intlLocale(lang: Lang): string {
   return lang === 'ar' ? 'ar-u-nu-latn' : 'en-US';
 }
 
+/** Decimal places the currency uses (3 for JOD/KWD/BHD, 0 for JPY, 2 otherwise). */
+export function currencyDecimals(currency: string = 'USD'): number {
+  return currency === 'JPY' ? 0 : THREE_DECIMAL_CURRENCIES.has(currency) ? 3 : 2;
+}
+
 export function formatMoney(
   n: number,
   currency: string = 'USD',

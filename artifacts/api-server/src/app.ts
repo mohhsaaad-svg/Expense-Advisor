@@ -42,6 +42,12 @@ for (const domain of (process.env.REPLIT_DOMAINS ?? "").split(",")) {
 if (process.env.REPLIT_DEV_DOMAIN) {
   allowedOrigins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
 }
+// Development only: the Expo web preview runs on a separate
+// *.expo.<cluster>.replit.dev origin and calls the API with a Bearer token,
+// so it needs CORS. Never enabled in production.
+if (process.env.NODE_ENV !== "production" && process.env.REPLIT_EXPO_DEV_DOMAIN) {
+  allowedOrigins.add(`https://${process.env.REPLIT_EXPO_DEV_DOMAIN}`);
+}
 if (process.env.ALLOWED_ORIGIN) {
   allowedOrigins.add(process.env.ALLOWED_ORIGIN);
 }
