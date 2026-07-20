@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExpensesSkeleton } from "@/components/Skeletons";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { EditExpenseDialog } from "@/components/EditExpenseDialog";
-import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame, Repeat } from "lucide-react";
+import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame, Repeat, Send, Users, CreditCard } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,9 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Entertainment": <Film className="w-5 h-5" />,
   "Housing": <Home className="w-5 h-5" />,
   "Utilities": <Zap className="w-5 h-5" />,
+  "Remittances": <Send className="w-5 h-5" />,
+  "Family support": <Users className="w-5 h-5" />,
+  "Installments": <CreditCard className="w-5 h-5" />,
   "Other": <MoreHorizontal className="w-5 h-5" />,
 };
 
@@ -40,6 +43,9 @@ const CATEGORIES = [
   "Entertainment",
   "Housing",
   "Utilities",
+  "Remittances",
+  "Family support",
+  "Installments",
   "Other",
 ];
 

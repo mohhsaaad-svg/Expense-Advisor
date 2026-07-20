@@ -30,7 +30,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { currencySymbol, formatDate, localDateKey } from "@/lib/utils";
 import { nextOccurrence, monthlyEquivalent, FREQUENCY_LABELS } from "@/lib/recurrence-ui";
 import {
-  Repeat, Plus, Pencil, Trash2, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal,
+  Repeat, Plus, Pencil, Trash2, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Send, Users, CreditCard,
 } from "lucide-react";
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -41,6 +41,9 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   "Entertainment": <Film className="w-5 h-5" />,
   "Housing": <Home className="w-5 h-5" />,
   "Utilities": <Zap className="w-5 h-5" />,
+  "Remittances": <Send className="w-5 h-5" />,
+  "Family support": <Users className="w-5 h-5" />,
+  "Installments": <CreditCard className="w-5 h-5" />,
   "Other": <MoreHorizontal className="w-5 h-5" />,
 };
 
@@ -52,6 +55,9 @@ const CATEGORIES = [
   "Entertainment",
   "Housing",
   "Utilities",
+  "Remittances",
+  "Family support",
+  "Installments",
   "Other",
 ];
 

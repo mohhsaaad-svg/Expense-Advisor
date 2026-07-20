@@ -21,6 +21,9 @@ export const CATEGORIES: CategoryMeta[] = [
   { name: 'Entertainment', icon: 'film-outline', color: '#EDC95E' },
   { name: 'Housing', icon: 'home-outline', color: '#BD3B0F' },
   { name: 'Utilities', icon: 'flash-outline', color: '#F49D25' },
+  { name: 'Remittances', icon: 'paper-plane-outline', color: '#3E7CB1' },
+  { name: 'Family support', icon: 'people-outline', color: '#8E5BA6' },
+  { name: 'Installments', icon: 'card-outline', color: '#5B8A72' },
   { name: 'Other', icon: 'ellipsis-horizontal-circle-outline', color: '#847062' },
 ];
 
