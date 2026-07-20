@@ -41,20 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useT, categoryLabel } from "@/lib/i18n";
 import { currencySymbol } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
-
-const CATEGORIES = [
-  "Food & Drink",
-  "Transport",
-  "Shopping",
-  "Health",
-  "Entertainment",
-  "Housing",
-  "Utilities",
-  "Remittances",
-  "Family support",
-  "Installments",
-  "Other",
-];
+import { CATEGORIES } from "@/lib/categories";
 
 const formSchema = z.object({
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),

@@ -30,37 +30,13 @@ import { useCurrency } from "@/hooks/use-currency";
 import { currencySymbol, localDateKey } from "@/lib/utils";
 import { nextOccurrence, monthlyEquivalent } from "@/lib/recurrence-ui";
 import { useT, categoryLabel, type TranslationKey } from "@/lib/i18n";
-import {
-  Repeat, Plus, Pencil, Trash2, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Send, Users, CreditCard,
-} from "lucide-react";
+import { Repeat, Plus, Pencil, Trash2 } from "lucide-react";
+import { CATEGORIES, CATEGORY_ICONS, type Category } from "@/lib/categories";
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "Food & Drink": <Coffee className="w-5 h-5" />,
-  "Transport": <Car className="w-5 h-5" />,
-  "Shopping": <ShoppingBag className="w-5 h-5" />,
-  "Health": <Heart className="w-5 h-5" />,
-  "Entertainment": <Film className="w-5 h-5" />,
-  "Housing": <Home className="w-5 h-5" />,
-  "Utilities": <Zap className="w-5 h-5" />,
-  "Remittances": <Send className="w-5 h-5" />,
-  "Family support": <Users className="w-5 h-5" />,
-  "Installments": <CreditCard className="w-5 h-5" />,
-  "Other": <MoreHorizontal className="w-5 h-5" />,
-};
-
-const CATEGORIES = [
-  "Food & Drink",
-  "Transport",
-  "Shopping",
-  "Health",
-  "Entertainment",
-  "Housing",
-  "Utilities",
-  "Remittances",
-  "Family support",
-  "Installments",
-  "Other",
-];
+function CategoryIcon({ category }: { category: string }) {
+  const Icon = CATEGORY_ICONS[category as Category];
+  return Icon ? <Icon className="w-5 h-5" /> : <Repeat className="w-6 h-6" />;
+}
 
 const FREQUENCY_LABEL_KEYS: Record<string, TranslationKey> = {
   daily: "frequency.daily",
@@ -274,7 +250,7 @@ export default function Recurring() {
               >
                 <div className="flex items-center gap-5 flex-1 min-w-0">
                   <div className="w-14 h-14 rounded-2xl bg-secondary text-secondary-foreground flex items-center justify-center shrink-0 shadow-inner group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    {CATEGORY_ICONS[rule.category] || <Repeat className="w-6 h-6" />}
+                    <CategoryIcon category={rule.category} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-lg text-foreground truncate mb-1" title={rule.description}>

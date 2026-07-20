@@ -14,40 +14,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExpensesSkeleton } from "@/components/Skeletons";
 import { AddExpenseDialog } from "@/components/AddExpenseDialog";
 import { EditExpenseDialog } from "@/components/EditExpenseDialog";
-import { Receipt, Search, Trash2, Calendar, Coffee, Car, ShoppingBag, Heart, Film, Home, Zap, MoreHorizontal, Pencil, Flame, Repeat, Send, Users, CreditCard } from "lucide-react";
+import { Receipt, Search, Trash2, Calendar, Pencil, Flame, Repeat } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "@/components/ui/badge";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useT, categoryLabel } from "@/lib/i18n";
+import { CATEGORIES, CATEGORY_ICONS, type Category } from "@/lib/categories";
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  "Food & Drink": <Coffee className="w-5 h-5" />,
-  "Transport": <Car className="w-5 h-5" />,
-  "Shopping": <ShoppingBag className="w-5 h-5" />,
-  "Health": <Heart className="w-5 h-5" />,
-  "Entertainment": <Film className="w-5 h-5" />,
-  "Housing": <Home className="w-5 h-5" />,
-  "Utilities": <Zap className="w-5 h-5" />,
-  "Remittances": <Send className="w-5 h-5" />,
-  "Family support": <Users className="w-5 h-5" />,
-  "Installments": <CreditCard className="w-5 h-5" />,
-  "Other": <MoreHorizontal className="w-5 h-5" />,
-};
-
-const CATEGORIES = [
-  "Food & Drink",
-  "Transport",
-  "Shopping",
-  "Health",
-  "Entertainment",
-  "Housing",
-  "Utilities",
-  "Remittances",
-  "Family support",
-  "Installments",
-  "Other",
-];
+function CategoryIcon({ category }: { category: string }) {
+  const Icon = CATEGORY_ICONS[category as Category];
+  return Icon ? <Icon className="w-5 h-5" /> : <Receipt className="w-6 h-6" />;
+}
 
 export default function Expenses() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -173,7 +151,7 @@ export default function Expenses() {
                       <div key={expense.id} className="group relative bg-card p-5 rounded-2xl border border-card-border/60 shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-5 flex-1 min-w-0">
                           <div className="w-14 h-14 rounded-2xl bg-secondary text-secondary-foreground flex items-center justify-center shrink-0 shadow-inner group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            {CATEGORY_ICONS[expense.category] || <Receipt className="w-6 h-6" />}
+                            <CategoryIcon category={expense.category} />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="font-semibold text-lg text-foreground truncate mb-1" title={expense.description}>

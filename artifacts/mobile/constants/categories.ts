@@ -32,7 +32,10 @@ export interface CategoryMeta {
 }
 
 /**
- * Fixed category list — must stay in sync with the web app and API.
+ * Fixed category list — names must stay in sync (exact string equality) with
+ * the web app's canonical list in
+ * artifacts/expense-tracker/src/lib/categories.ts. Server-side challenge
+ * violation counting compares these strings exactly, so drift breaks it.
  * Colors come from the Ember chart palette (warm analogous tones).
  */
 export const CATEGORIES: CategoryMeta[] = [
