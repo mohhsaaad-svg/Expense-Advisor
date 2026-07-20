@@ -1,0 +1,72 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-primary: var(--slide-primary);
+  --color-accent: var(--slide-accent);
+  --color-bg: var(--slide-bg);
+  --color-text: var(--slide-text);
+  --color-muted: var(--slide-muted);
+  --color-steel: var(--slide-steel);
+  --color-faint: var(--slide-faint);
+  --color-line: var(--slide-line);
+  --font-display: var(--font-display-family);
+  --font-body: var(--font-body-family);
+}
+
+:root {
+  /* Corporate Grid — Product Lab studio pitch */
+  --slide-primary: #3d5a80;
+  --slide-accent: #ee6c4d;
+  --slide-bg: #ffffff;
+  --slide-text: #111111;
+  --slide-muted: #666666;
+  --slide-steel: #98c1d9;
+  --slide-faint: #999999;
+  --slide-line: #e0e0e0;
+  --font-display-family: 'Inter', system-ui, sans-serif;
+  --font-body-family: 'Inter', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--slide-bg);
+  color: var(--slide-text);
+}
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.slide-viewer {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Engineering-paper grid — the studio drafting board */
+.grid-bg {
+  background-image: repeating-linear-gradient(
+      to right,
+      #f0f0f0 0,
+      #f0f0f0 1px,
+      transparent 1px,
+      transparent 5vw
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      #f0f0f0 0,
+      #f0f0f0 1px,
+      transparent 1px,
+      transparent 5vh
+    );
+}

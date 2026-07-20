@@ -7,6 +7,8 @@ Product Lab is a studio that turns ideas into reality — building apps that mak
 - **#1 · Ember** — daily expense tracker (live). Web at `/`, mobile at `/mobile/`, shared Express API + Postgres. Full docs below.
 - _Future products get added to this roster as they're built. Each is its own new artifact with a matching slug/preview path — never bolt a second product onto an existing one._
 
+Studio assets: **pitch deck** (`artifacts/studio-pitch`, preview at `/studio-pitch/`) — 10 slides introducing the studio, Ember as proof, the market pivot toward Project Basira (working title, GCC-first "safe to spend before payday" navigator), and the build process. Own creative concept ("The Studio Grid": engineering-paper grid, navy/steel/orange on white, Inter), intentionally not Ember's palette.
+
 ## How Product Lab builds
 
 Two custom skills encode the studio process and should activate on any new build:

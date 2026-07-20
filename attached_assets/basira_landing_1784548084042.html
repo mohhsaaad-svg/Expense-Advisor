@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basira بصيرة — Know what's safe to spend before payday</title>
+<style>
+  :root{--accent:#e05d2e;--dark:#191512;--card:#241f1a;--text:#f4efe9;--muted:#a89c8f;--ok:#3e8e5a;}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Arial,sans-serif;}
+  body{background:var(--dark);color:var(--text);line-height:1.6;}
+  .container{max-width:960px;margin:0 auto;padding:0 24px;}
+  header{padding:26px 0;display:flex;justify-content:space-between;align-items:center;}
+  .logo{font-size:1.5rem;font-weight:800;color:var(--accent);}
+  .lang-toggle{background:none;border:1px solid var(--muted);color:var(--text);padding:8px 16px;border-radius:20px;cursor:pointer;}
+  .hero{text-align:center;padding:60px 0 30px;}
+  .hero h1{font-size:2.5rem;line-height:1.25;margin-bottom:16px;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{font-size:1.12rem;color:var(--muted);max-width:640px;margin:0 auto 30px;}
+  .demo{background:var(--card);border:1px solid #3a3129;border-radius:16px;max-width:420px;margin:0 auto 34px;padding:24px;}
+  .demo .label{color:var(--muted);font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;}
+  .demo .num{font-size:2.6rem;font-weight:800;color:var(--ok);margin:6px 0;}
+  .demo .why{color:var(--muted);font-size:.9rem;border-top:1px dashed #3a3129;padding-top:12px;margin-top:8px;text-align:start;}
+  .cta-form{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .cta-form input{padding:14px 18px;border-radius:10px;border:1px solid #3a3129;background:var(--card);color:var(--text);width:300px;font-size:1rem;}
+  .cta-form button{padding:14px 28px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;font-size:1rem;cursor:pointer;}
+  .note{font-size:.85rem;color:var(--muted);margin-top:12px;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;padding:44px 0 60px;}
+  .card{background:var(--card);border:1px solid #3a3129;border-radius:14px;padding:24px;}
+  .card h3{color:var(--accent);margin-bottom:10px;font-size:1.02rem;}
+  .card p{color:var(--muted);font-size:.94rem;}
+  footer{padding:26px 0;text-align:center;color:var(--muted);font-size:.85rem;border-top:1px solid #3a3129;}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">Basira بصيرة</div>
+    <button class="lang-toggle" onclick="toggleLang()" id="langBtn">العربية</button>
+  </header>
+
+  <section class="hero">
+    <h1 id="h1">Know what's <span>safe to spend</span> — before your next salary.</h1>
+    <p id="sub">Rent due in October. Eid coming. School fees in September. Basira sees your real salary cycle and tells you one honest number — and exactly why.</p>
+
+    <div class="demo">
+      <div class="label" id="dLabel">Safe to spend until payday (Aug 1)</div>
+      <div class="num" id="dNum">JOD 218</div>
+      <div class="why" id="dWhy">✓ Salary in 12 days · ✓ Rent (quarterly) reserved · ✓ Family transfer reserved · ✓ School fees building up — all already counted.</div>
+    </div>
+
+    <form class="cta-form" action="https://formsubmit.co/mohh.saaad@gmail.com" method="POST">
+      <input type="hidden" name="_subject" value="🟠 Basira waitlist signup!">
+      <input type="hidden" name="_captcha" value="false">
+      <input type="email" name="email" id="emailInput" placeholder="Your email" required>
+      <button type="submit" id="ctaBtn">Get early access</button>
+    </form>
+    <div class="note" id="note">Free early access for the first 100. Arabic & English. No bank passwords — ever.</div>
+  </section>
+
+  <section class="cards">
+    <div class="card"><h3 id="c1h">📅 Your salary cycle, not the calendar</h3><p id="c1p">Payday-to-payday planning with quarterly rent, installments, remittances, Ramadan, Eid and school fees — the way money actually works here.</p></div>
+    <div class="card"><h3 id="c2h">🔢 Real math, explained simply</h3><p id="c2p">Every number is a transparent calculation you can check — AI explains it in plain Arabic or English, it never invents it.</p></div>
+    <div class="card"><h3 id="c3h">🔒 No bank logins</h3><p id="c3p">You stay in control. Add your numbers in minutes, keep your privacy completely.</p></div>
+  </section>
+
+  <footer>© 2026 Saad Ventures · Basira بصيرة — clarity between paydays</footer>
+</div>
+
+<script>
+const AR={h1:'اعرف <span>كم تقدر تصرف</span> — قبل راتبك الجاي.',sub:'إيجار في أكتوبر. العيد قريب. رسوم مدارس في سبتمبر. "بصيرة" تفهم دورة راتبك الحقيقية وتعطيك رقماً واحداً صادقاً — وليش.',dLabel:'الآمن للصرف حتى الراتب (١ أغسطس)',dNum:'٢١٨ دينار',dWhy:'✓ الراتب بعد ١٢ يوم · ✓ الإيجار (ربع سنوي) محجوز · ✓ حوالة الأهل محجوزة · ✓ رسوم المدارس محسوبة — كل شيء مأخوذ بالحسبان.',cta:'سجّل للوصول المبكر',email:'بريدك الإلكتروني',note:'وصول مبكر مجاني لأول ١٠٠. عربي وإنجليزي. بدون كلمات سر بنكية — أبداً.',c1h:'📅 دورة راتبك، مش التقويم',c1p:'تخطيط من راتب إلى راتب مع الإيجار الربع سنوي والأقساط والحوالات ورمضان والعيد ورسوم المدارس — كما تعمل الفلوس فعلاً عندنا.',c2h:'🔢 حساب حقيقي، وشرح بسيط',c2p:'كل رقم هو عملية حسابية شفافة تقدر تتأكد منها — الذكاء الاصطناعي يشرحها بالعربي الواضح، ولا يخترعها أبداً.',c3h:'🔒 بدون دخول بنكي',c3p:'أنت المتحكم. أضف أرقامك بدقائق، واحتفظ بخصوصيتك كاملة.'};
+const EN={h1:"Know what's <span>safe to spend</span> — before your next salary.",sub:'Rent due in October. Eid coming. School fees in September. Basira sees your real salary cycle and tells you one honest number — and exactly why.',dLabel:'Safe to spend until payday (Aug 1)',dNum:'JOD 218',dWhy:'✓ Salary in 12 days · ✓ Rent (quarterly) reserved · ✓ Family transfer reserved · ✓ School fees building up — all already counted.',cta:'Get early access',email:'Your email',note:'Free early access for the first 100. Arabic & English. No bank passwords — ever.',c1h:'📅 Your salary cycle, not the calendar',c1p:'Payday-to-payday planning with quarterly rent, installments, remittances, Ramadan, Eid and school fees — the way money actually works here.',c2h:'🔢 Real math, explained simply',c2p:'Every number is a transparent calculation you can check — AI explains it in plain Arabic or English, it never invents it.',c3h:'🔒 No bank logins',c3p:'You stay in control. Add your numbers in minutes, keep your privacy completely.'};
+let ar=false;
+function toggleLang(){
+  ar=!ar; const t=ar?AR:EN;
+  document.documentElement.lang=ar?'ar':'en';
+  document.documentElement.dir=ar?'rtl':'ltr';
+  document.getElementById('langBtn').textContent=ar?'English':'العربية';
+  document.getElementById('h1').innerHTML=t.h1;
+  for(const k of ['sub','dLabel','dNum','dWhy','note','c1h','c1p','c2h','c2p','c3h','c3p'])document.getElementById(k).textContent=t[k];
+  document.getElementById('ctaBtn').textContent=t.cta;
+  document.getElementById('emailInput').placeholder=t.email;
+}
+</script>
+</body>
+</html>

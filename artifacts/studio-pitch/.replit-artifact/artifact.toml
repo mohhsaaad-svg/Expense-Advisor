@@ -1,0 +1,27 @@
+kind = "slides"
+previewPath = "/studio-pitch/"
+title = "Product Lab Pitch"
+version = "1.0.0"
+id = "artifacts/studio-pitch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/studio-pitch/" ]
+localPort = 19712
+
+[services.development]
+run = "pnpm --filter @workspace/studio-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/studio-pitch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/studio-pitch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19712"
+BASE_PATH = "/studio-pitch/"
