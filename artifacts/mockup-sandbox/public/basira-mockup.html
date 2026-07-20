@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basira بصيرة — App UI Mockup (Today screen)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F2E2E; --ink2:#143C3B; --sight:#17B8A6; --sand:#F6F1E8;
+    --safe:#2FA46B; --caution:#E5A63C; --risk:#D8544A;
+    --text:#F4F6F5; --muted:#7C9694; --card:#16403E;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'IBM Plex Sans Arabic',sans-serif;}
+  body{background:#0a1f1f;display:flex;gap:40px;justify-content:center;align-items:flex-start;padding:40px 20px;flex-wrap:wrap;}
+  .phone{width:390px;background:var(--ink);border-radius:44px;padding:14px;box-shadow:0 30px 80px rgba(0,0,0,.5);border:1px solid #1e4a48;}
+  .screen{background:linear-gradient(180deg,var(--ink) 0%,var(--ink2) 100%);border-radius:34px;overflow:hidden;min-height:780px;display:flex;flex-direction:column;}
+  .statusbar{display:flex;justify-content:space-between;padding:14px 24px 6px;color:var(--muted);font-size:12px;}
+  .header{display:flex;justify-content:space-between;align-items:center;padding:12px 22px;}
+  .brand{display:flex;align-items:center;gap:8px;color:var(--text);font-weight:700;font-size:17px;}
+  .eye{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--sight);position:relative;}
+  .eye::after{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--sight);clip-path:ellipse(50% 38% at 50% 55%);}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--card);color:var(--sight);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;}
+  .hero{text-align:center;padding:26px 22px 10px;}
+  .hero .label{color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase;}
+  .hero .num{font-size:58px;font-weight:700;color:var(--safe);line-height:1.1;margin:8px 0 2px;font-variant-numeric:tabular-nums;}
+  .hero .num small{font-size:22px;color:var(--muted);font-weight:500;}
+  .hero .sub{color:var(--muted);font-size:14px;}
+  .hero .sub b{color:var(--text);font-weight:600;}
+  .why{margin:16px 22px;background:var(--card);border:1px solid #1e4a48;border-radius:16px;padding:14px 16px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;align-items:center;}
+  .why span{color:var(--sight);font-weight:600;}
+  .section{padding:14px 22px 4px;color:var(--text);font-weight:600;font-size:15px;display:flex;justify-content:space-between;}
+  .section a{color:var(--sight);font-size:13px;text-decoration:none;font-weight:500;}
+  .river{display:flex;gap:10px;overflow-x:auto;padding:10px 22px;}
+  .stone{min-width:118px;background:var(--card);border:1px solid #1e4a48;border-radius:14px;padding:12px;}
+  .stone .d{color:var(--muted);font-size:11px;}
+  .stone .n{color:var(--text);font-size:13px;font-weight:600;margin:3px 0;}
+  .stone .a{color:var(--caution);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .stone.payday{border-color:var(--safe);}
+  .stone.payday .a{color:var(--safe);}
+  .action{margin:14px 22px;background:linear-gradient(135deg,#124a42,#16403E);border:1px solid var(--sight);border-radius:16px;padding:16px;}
+  .action .t{color:var(--sight);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+  .action .b{color:var(--text);font-size:14px;margin-top:6px;line-height:1.5;}
+  .action .btns{display:flex;gap:10px;margin-top:12px;}
+  .action button{flex:1;padding:10px;border-radius:10px;border:none;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;}
+  .accept{background:var(--sight);color:#06201d;}
+  .later{background:transparent;border:1px solid #2a5a57 !important;color:var(--muted);}
+  .tabbar{margin-top:auto;display:flex;justify-content:space-around;padding:14px 10px 22px;border-top:1px solid #1e4a48;}
+  .tab{color:var(--muted);font-size:11px;text-align:center;width:64px;}
+  .tab.active{color:var(--sight);font-weight:600;}
+  .tab .ico{font-size:20px;display:block;margin-bottom:3px;}
+  .caption{color:#7C9694;text-align:center;font-size:13px;margin-top:14px;width:390px;}
+  .rtl .hero,.rtl .header,.rtl .section{direction:rtl;}
+</style>
+</head>
+<body>
+
+<div>
+  <div class="phone">
+    <div class="screen">
+      <div class="statusbar"><span>9:41</span><span>⦿ ᯤ ▮</span></div>
+      <div class="header">
+        <div class="brand"><div class="eye"></div> Basira</div>
+        <div class="avatar">MS</div>
+      </div>
+      <div class="hero">
+        <div class="label">Safe to spend until payday</div>
+        <div class="num">218<small> JOD</small></div>
+        <div class="sub">Payday in <b>12 days</b> · confidence <b style="color:var(--safe)">HIGH</b></div>
+      </div>
+      <div class="why">Why this number? Balances − commitments − buffer <span>See the math ›</span></div>
+      <div class="section">On the way to payday <a href="#">Plan ›</a></div>
+      <div class="river">
+        <div class="stone"><div class="d">Jul 25</div><div class="n">🏠 Rent (Q3)</div><div class="a">−300</div></div>
+        <div class="stone"><div class="d">Jul 27</div><div class="n">📱 Telecom</div><div class="a">−24</div></div>
+        <div class="stone"><div class="d">Jul 28</div><div class="n">👨‍👩‍👦 Family transfer</div><div class="a">−100</div></div>
+        <div class="stone payday"><div class="d">Aug 1</div><div class="n">💼 Salary</div><div class="a">+1,450</div></div>
+      </div>
+      <div class="action">
+        <div class="t">One action</div>
+        <div class="b">School fees are due in 6 weeks. Reserving <b>35 JOD</b> from this cycle keeps September safe.</div>
+        <div class="btns"><button class="accept">Reserve it</button><button class="later">Not now</button></div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><span class="ico">◉</span>Today</div>
+        <div class="tab"><span class="ico">🗓</span>Plan</div>
+        <div class="tab"><span class="ico">↔</span>Activity</div>
+        <div class="tab"><span class="ico">⚙</span>Settings</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">English · Today screen — the Hero Number owns the screen</div>
+</div>
+
+<div>
+  <div class="phone rtl">
+    <div class="screen">
+      <div class="statusbar"><span>٩:٤١</span><span>⦿ ᯤ ▮</span></div>
+      <div class="header">
+        <div class="brand"><div class="eye"></div> بصيرة</div>
+        <div class="avatar">م</div>
+      </div>
+      <div class="hero">
+        <div class="label">الآمن للصرف حتى الراتب</div>
+        <div class="num">٢١٨<small> دينار</small></div>
+        <div class="sub">الراتب بعد <b>١٢ يوم</b> · الثقة <b style="color:var(--safe)">عالية</b></div>
+      </div>
+      <div class="why" style="direction:rtl">ليش هذا الرقم؟ الأرصدة − الالتزامات − الاحتياطي <span>‹ شوف الحساب</span></div>
+      <div class="section">بالطريق إلى الراتب <a href="#">‹ الخطة</a></div>
+      <div class="river" style="direction:rtl">
+        <div class="stone"><div class="d">٢٥ يوليو</div><div class="n">🏠 الإيجار (ربع سنوي)</div><div class="a">−٣٠٠</div></div>
+        <div class="stone"><div class="d">٢٧ يوليو</div><div class="n">📱 الاتصالات</div><div class="a">−٢٤</div></div>
+        <div class="stone"><div class="d">٢٨ يوليو</div><div class="n">👨‍👩‍👦 حوالة الأهل</div><div class="a">−١٠٠</div></div>
+        <div class="stone payday"><div class="d">١ أغسطس</div><div class="n">💼 الراتب</div><div class="a">+١٬٤٥٠</div></div>
+      </div>
+      <div class="action" style="direction:rtl">
+        <div class="t">إجراء واحد</div>
+        <div class="b">رسوم المدارس بعد ٦ أسابيع. حجز <b>٣٥ دينار</b> من هذه الدورة يخلّي سبتمبر آمن.</div>
+        <div class="btns"><button class="accept">احجزها</button><button class="later">مش هلأ</button></div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><span class="ico">◉</span>اليوم</div>
+        <div class="tab"><span class="ico">🗓</span>الخطة</div>
+        <div class="tab"><span class="ico">↔</span>الحركة</div>
+        <div class="tab"><span class="ico">⚙</span>الإعدادات</div>
+      </div>
+    </div>
+  </div>
+  <div class="caption">عربي · شاشة اليوم — RTL مصمم أولاً، مش مترجم</div>
+</div>
+
+</body>
+</html>
