@@ -6,3 +6,4 @@
 - [Monorepo type visibility](workspace-typecheck.md) — after editing lib/* source, run root `pnpm run typecheck` (tsc --build); package-local tsc resolves stale composite declarations.
 - [API test recipe](api-testing-recipe.md) — vitest+supertest vs real dev DB: inline @workspace deps, NODE_ENV=test skips limiters/pretty-logger, mint sessions in DB + Bearer sid.
 - [Slides QA floor vs template chrome](slides-qa-vs-template.md) — hold deck content to ≥2vw body / ≥1.5vw labels; keep skill-template furniture at its shipped sizes.
+- [gitPush upstream workaround](github-push-upstream.md) — gitPush callback refuses when main tracks a subrepl remote (or has no upstream); re-point upstream to origin/main, push, restore.
