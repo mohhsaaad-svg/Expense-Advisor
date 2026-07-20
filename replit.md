@@ -1,3 +1,30 @@
+# Product Lab
+
+Product Lab is a studio that turns ideas into reality — building apps that make life easier. Products share the studio's conventions and quality bar, but each gets its own distinct visual identity and creative concept. Ember (a daily expense tracker) is product #1; more will follow.
+
+## Products
+
+- **#1 · Ember** — daily expense tracker (live). Web at `/`, mobile at `/mobile/`, shared Express API + Postgres. Full docs below.
+- _Future products get added to this roster as they're built. Each is its own new artifact with a matching slug/preview path — never bolt a second product onto an existing one._
+
+## How Product Lab builds
+
+Two custom skills encode the studio process and should activate on any new build:
+
+- **`product-playbook`** — idea → launch: intake/scoping questions, artifact & naming conventions, the build/test/review quality gates proven on Ember, and the launch checklist.
+- **`design-standards`** — cross-product design: a distinct identity per product on a shared craft bar (scannable hierarchy, evocative naming, polished loading/empty/error states, responsive + reduced-motion).
+
+Conventions summary (see `product-playbook` for detail): pnpm monorepo, one artifact per product with matching slug/`previewPath`; the OpenAPI contract is the source of truth (regenerate client code after every change); strict per-user data isolation on every query; quality gates before "done" (typecheck → API tests → end-to-end tests → code-review round → threat model for personal-data apps); production database migrated before every publish.
+
+## User preferences
+
+These apply to every Product Lab product:
+
+- Product and feature names should be **non-obvious and evocative**, never literal — the user rejected "SpendWise" as too obvious and chose **Ember**; features are named "Rituals" (recurring expenses) and "Ask Ember" (AI coach), not "Recurring" or "Chatbot".
+- UI/UX must be **organized and scannable** — prioritize clear hierarchy and grouping in every layout.
+
+---
+
 # Ember — Daily Expense Tracker
 
 Ember is a personal daily expense tracker: log what you spend, set daily/monthly budget limits, and get automatic heads-up alerts and saving tips based on your spending patterns.
@@ -60,11 +87,6 @@ Ember is a personal daily expense tracker: log what you spend, set daily/monthly
 - Ask Ember (web `/coach`, mobile Coach tab): streaming AI money coach grounded in the user's actual budget, spending, goals, and challenges; conversation history with delete + auto-titles
 - Goals & Challenges (web `/goals`, mobile Goals tab): savings goals with progress and add/withdraw contributions (optional deadlines); no-spend challenges per category (7/14/21/30 days) with server-computed active/completed/failed status
 - Login required (Replit Auth); user identity + logout in the app shell
-
-## User preferences
-
-- App name should be non-obvious and evocative — user rejected "SpendWise" as too obvious; current name: **Ember**
-- User wants organized, scannable UI/UX — prioritize clear hierarchy and grouping in any UI changes
 
 ## Gotchas
 
