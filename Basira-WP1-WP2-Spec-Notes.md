@@ -26,6 +26,15 @@ Purpose: single reference for the WP1/WP2 task descriptions and any agent implem
 - **Commitments:** non-monthly schedules are first-class (quarterly rent, school fees, installments, remittances, family support, Ramadan/Eid). Hijri-aware scheduling is an **open question** — audit says validate (dates vary by jurisdiction/observation) before adding schema for it; do not bake yet.
 - **Golden reference:** advisors' fixture set is the source of truth for the deterministic engine. The already-merged safe-to-spend feature (#17) must be **re-verified against the golden fixtures** once WP1 money types land; fold into WP2 acceptance.
 
+## Current state after the 2026-07-20 merge wave (tasks #17/#18/#22/#23/#24/#25)
+
+- A **mills-based money core already exists** (api-server money lib + safe-to-spend engine): integer mills (thousandths), DB `numeric(12,3)` on all new money columns (budget.salaryAmount, goals.perPaydayAmount). WP1 is therefore a **hardening pass, not greenfield**: mills are currently typed as JS `Number` → move to bigint (or guarded safe-integer with lint enforcement), add the registry (`{code, minorUnits, displayDecimals}`), add **OMR** (core covers JOD/KWD/BHD only).
+- Legacy 2-decimal columns still exist alongside numeric(12,3) — the dual-precision world is already live; WP2's additive migration finishes and formalizes it.
+- **Known 2dp remnant to sweep in WP1:** the goal-contribution endpoint rounds with `toFixed(2)` inside its raw-SQL atomic update (goals routes) — predates the mills core.
+- **Arabic/RTL shipped** (#18): per-user language preference, Latin digits via `ar-u-nu-latn`, web flips via document dir + logical classes, mobile uses an explicit isRTL flag. WP1 i18n primitives = formalize these conventions + add the numeral-system **user preference** (Arabic-Indic digits as opt-in) on top — not rebuild.
+- Safe-to-spend engine (#17) is the sole source of that figure, with a deterministic breakdown endpoint and tests; **golden-fixture re-verification still owed** once WP1 money hardening lands (WP2 acceptance).
+- Test baseline is now **61 tests / 6 files** (was 45). Post-merge delta-audit: every query the wave added is owner-scoped; no routes outside requireAuth.
+
 ## Standing constraints (board directive, controlling)
 
 - Portfolio screens/tables removed from MVP entirely. Advisor ships feature-flag OFF, unimplemented this phase. No UI work packages (WP5+) until founder confirms the validation gate.
